@@ -149,12 +149,14 @@ async function picrossView() {
   draw();
 }
 
-const discordSdk = new DiscordSDK(import.meta.env.VITE_DISCORD_CLIENT_ID);
-(async() => {
-  await discordSdk.ready();
-  const { code } = await discordSdk.commands.authorize({ client_id:import.meta.env.VITE_DISCORD_CLIENT_ID, response_type:'code', prompt:'none', scope:['identify','guilds','applications.commands'] });
-  const { access_token } = await (await fetch('/.proxy/api/token',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({code}) })).json();
-  auth = await discordSdk.commands.authenticate({ access_token });
-  if (!auth) throw new Error('Auth failed');
-  await picrossView();
-})();
+// const discordSdk = new DiscordSDK(import.meta.env.VITE_DISCORD_CLIENT_ID);
+// (async() => {
+//   await discordSdk.ready();
+//   const { code } = await discordSdk.commands.authorize({ client_id:import.meta.env.VITE_DISCORD_CLIENT_ID, response_type:'code', prompt:'none', scope:['identify','guilds','applications.commands'] });
+//   const { access_token } = await (await fetch('/.proxy/api/token',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({code}) })).json();
+//   auth = await discordSdk.commands.authenticate({ access_token });
+//   if (!auth) throw new Error('Auth failed');
+//   await picrossView();
+// })();
+
+picrossView();
