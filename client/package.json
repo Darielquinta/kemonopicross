@@ -1,0 +1,20 @@
+{
+  "name": "getting-started-activity",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "tunnel": "cloudflared tunnel run picross-tunnel",
+    "start": "concurrently \"npm run dev\" \"npm run tunnel\"",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "vite": "^6.3.5"
+  },
+  "dependencies": {
+    "@discord/embedded-app-sdk": "^2.0.0"
+  }
+}
