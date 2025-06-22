@@ -75,6 +75,7 @@ async function picrossView() {
   const wrong = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
   let dragging = false;
   let mode = null; // 'correct' or 'wrong'
+  let solved = false;
 
   canvas.addEventListener('contextmenu', e => e.preventDefault());
 
@@ -85,10 +86,13 @@ async function picrossView() {
     ctx.fillRect(0,0,LEFT_PAD-2,TOP_PAD-2);
     rowClues.forEach((_, y) => ctx.fillRect(0, TOP_PAD+y*CELL_PX, LEFT_PAD-2, CELL_PX));
     colClues.forEach((_, x) => ctx.fillRect(LEFT_PAD+x*CELL_PX, 0, CELL_PX, TOP_PAD-2));
+
     ctx.fillStyle = COLORS.empty;
     ctx.fillRect(LEFT_PAD, TOP_PAD, COLS*CELL_PX, ROWS*CELL_PX);
+
     ctx.fillStyle = COLORS.filled;
     correct.forEach((row,y) => row.forEach((v,x) => { if(v) ctx.fillRect(LEFT_PAD+x*CELL_PX, TOP_PAD+y*CELL_PX, CELL_PX, CELL_PX); }));
+
     ctx.strokeStyle = COLORS.wrong;
     ctx.lineWidth = 4;
     wrong.forEach((row,y) => row.forEach((v,x) => {
@@ -99,30 +103,47 @@ async function picrossView() {
         ctx.stroke();
       }
     }));
-    if(hover) {
+
+    if(hover && !solved) {
       const {x,y} = hover;
       ctx.fillStyle = COLORS.hover;
       ctx.fillRect(LEFT_PAD+x*CELL_PX, TOP_PAD, CELL_PX, ROWS*CELL_PX);
       ctx.fillRect(LEFT_PAD, TOP_PAD+y*CELL_PX, COLS*CELL_PX, CELL_PX);
     }
+
     ctx.strokeStyle = COLORS.grid; ctx.lineWidth = 1;
     for(let i=0;i<=ROWS;i++){ const y=TOP_PAD+i*CELL_PX; ctx.beginPath(); ctx.moveTo(LEFT_PAD,y); ctx.lineTo(LEFT_PAD+COLS*CELL_PX,y); ctx.stroke(); }
     for(let i=0;i<=COLS;i++){ const x=LEFT_PAD+i*CELL_PX; ctx.beginPath(); ctx.moveTo(x,TOP_PAD); ctx.lineTo(x,TOP_PAD+ROWS*CELL_PX); ctx.stroke(); }
+
     ctx.lineWidth = 3;
     for(let i=5;i<ROWS-1;i+=5){ const y=TOP_PAD+i*CELL_PX; ctx.beginPath(); ctx.moveTo(LEFT_PAD,y); ctx.lineTo(LEFT_PAD+COLS*CELL_PX,y); ctx.stroke(); }
     for(let i=5;i<COLS-1;i+=5){ const x=LEFT_PAD+i*CELL_PX; ctx.beginPath(); ctx.moveTo(x,TOP_PAD); ctx.lineTo(x,TOP_PAD+ROWS*CELL_PX); ctx.stroke(); }
+
     ctx.strokeStyle = COLORS.border; ctx.lineWidth = 4;
     ctx.strokeRect(LEFT_PAD-2, TOP_PAD-2, COLS*CELL_PX+4, ROWS*CELL_PX+4);
+
     ctx.font = `bold ${CLUE_PX}px monospace`;
     ctx.fillStyle = COLORS.clueText;
     ctx.textAlign = "right"; ctx.textBaseline = "middle";
-    rowClues.forEach((nums,y) => { const cy=TOP_PAD+y*CELL_PX+CELL_PX/2; nums.slice().reverse().forEach((n,i) => ctx.fillText(n, LEFT_PAD-i*CLUE_PX-8, cy)); });
+    rowClues.forEach((nums,y) => {
+      const cy = TOP_PAD+y*CELL_PX+CELL_PX/2;
+      nums.slice().reverse().forEach((n,i) => ctx.fillText(n, LEFT_PAD-i*CLUE_PX-8, cy));
+    });
+
     ctx.textAlign = "center"; ctx.textBaseline = "bottom";
-    colClues.forEach((nums,x) => { const cx=LEFT_PAD+x*CELL_PX+CELL_PX/2; nums.slice().reverse().forEach((n,i) => ctx.fillText(n, cx, TOP_PAD-i*CLUE_PX-8)); });
+    colClues.forEach((nums,x) => {
+      const cx = LEFT_PAD+x*CELL_PX+CELL_PX/2;
+      nums.slice().reverse().forEach((n,i) => ctx.fillText(n, cx, TOP_PAD-i*CLUE_PX-8));
+    });
   }
 
   const isSolved = () => patternGrid.every((r,y) => r.every((v,x) => v ? correct[y][x] : true));
-  const showCongrats = () => { const d=document.createElement('div'); d.textContent='🎉 Congratulations!'; d.style='margin-top:12px;padding:8px 16px;background:#57F287;color:#23272A;font-weight:bold;border-radius:8px;text-align:center;'; holder.appendChild(d); };
+  const showCongrats = () => {
+    const d = document.createElement('div');
+    d.textContent = '🎉 Congratulations!';
+    d.style = 'margin-top:12px; padding:8px 16px; background:#57F287; color:#23272A; font-weight:bold; border-radius:8px; text-align:center;';
+    holder.appendChild(d);
+  };
 
   function applyCell(x,y) {
     if (patternGrid[y][x]) correct[y][x] = true;
@@ -130,33 +151,42 @@ async function picrossView() {
   }
 
   canvas.addEventListener('mousedown', e => {
-    e.preventDefault(); const r=canvas.getBoundingClientRect(); const x=Math.floor((e.clientX-r.left-LEFT_PAD)/CELL_PX); const y=Math.floor((e.clientY-r.top-TOP_PAD)/CELL_PX);
-    if(x<0||y<0||x>=COLS||y>=ROWS) return;
+    e.preventDefault();
+    const r = canvas.getBoundingClientRect();
+    const x = Math.floor((e.clientX - r.left - LEFT_PAD) / CELL_PX);
+    const y = Math.floor((e.clientY - r.top - TOP_PAD) / CELL_PX);
+    if (x < 0 || y < 0 || x >= COLS || y >= ROWS || solved) return;
     dragging = true;
     mode = e.button === 2 ? 'wrong' : 'correct';
-    applyCell(x,y);
-    draw({x,y}); if(isSolved()){canvas.style.pointerEvents='none'; showCongrats();}
+    applyCell(x, y);
+    draw({x, y});
+    if (!solved && isSolved()) { solved = true; canvas.style.pointerEvents = 'none'; showCongrats(); }
   });
 
   canvas.addEventListener('mousemove', e => {
-    const r=canvas.getBoundingClientRect(); const x=Math.floor((e.clientX-r.left-LEFT_PAD)/CELL_PX); const y=Math.floor((e.clientY-r.top-TOP_PAD)/CELL_PX);
-    if (dragging && x>=0 && y>=0 && x<COLS && y<ROWS) { applyCell(x,y); draw({x,y}); }
-    else if (!dragging) { if(x>=0&&y>=0&&x<COLS&&y<ROWS) draw({x,y}); else draw(); }
+    const r = canvas.getBoundingClientRect();
+    const x = Math.floor((e.clientX - r.left - LEFT_PAD) / CELL_PX);
+    const y = Math.floor((e.clientY - r.top - TOP_PAD) / CELL_PX);
+    if (dragging && x >= 0 && y >= 0 && x < COLS && y < ROWS && !solved) {
+      applyCell(x, y);
+      draw({x, y});
+      if (!solved && isSolved()) { solved = true; canvas.style.pointerEvents = 'none'; showCongrats(); }
+    } else if (!dragging && x >= 0 && y >= 0 && x < COLS && y < ROWS && !solved) {
+      draw({x, y});
+    } else {
+      draw();
+    }
   });
 
-  canvas.addEventListener('mouseup', () => { dragging=false; mode=null; });
+  // stop dragging on actual mouseup anywhere
+  window.addEventListener('mouseup', () => { dragging = false; mode = null; });
+
+  // clear hover highlight when leaving canvas (but don't cancel drag)
+  canvas.addEventListener('mouseleave', () => { draw(); });
+
+  canvas.addEventListener('mouseup', () => { dragging = false; mode = null; });
 
   draw();
 }
-
-// const discordSdk = new DiscordSDK(import.meta.env.VITE_DISCORD_CLIENT_ID);
-// (async() => {
-//   await discordSdk.ready();
-//   const { code } = await discordSdk.commands.authorize({ client_id:import.meta.env.VITE_DISCORD_CLIENT_ID, response_type:'code', prompt:'none', scope:['identify','guilds','applications.commands'] });
-//   const { access_token } = await (await fetch('/.proxy/api/token',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({code}) })).json();
-//   auth = await discordSdk.commands.authenticate({ access_token });
-//   if (!auth) throw new Error('Auth failed');
-//   await picrossView();
-// })();
 
 picrossView();
