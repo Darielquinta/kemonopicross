@@ -50,19 +50,7 @@ const MAX_COL = Math.max(...colClues.map(a => a.length));
 
 const CLUE_RATIO = 22 / 69;
 const MIN_CELL = 30;
-const CELL = Math.max(
-  MIN_CELL,
-  Math.floor(
-    Math.min(
-      (window.innerWidth - 16) / (COLS + MAX_ROW * CLUE_RATIO),
-      (window.innerHeight - 16) / (ROWS + MAX_COL * CLUE_RATIO)
-    )
-  )
-);
-const CLUE = Math.round(CELL * CLUE_RATIO);
-
-const LEFT = MAX_ROW * CLUE + 12;   // board origin X
-const TOP  = MAX_COL * CLUE + 12;   // board origin Y
+let CELL, CLUE, LEFT, TOP;
 
 /* ───────── MAIN ───────── */
 async function view() {
@@ -83,11 +71,29 @@ async function view() {
 
   /* DOM skeleton */
   const app = document.querySelector("#app");
-  app.innerHTML = `<div style="text-align:center;margin-top:12px"><img src="${logo}" style="max-width:90%"></div>`;
+  app.innerHTML = `<div style="text-align:center;margin-top:12px"><img src="${logo}" class="logo"></div>`;
 
   const wrap = document.createElement("div");
   wrap.style.cssText = "margin-top:12px;position:relative;display:inline-block;";
   app.appendChild(wrap);
+
+  const logoImg = app.querySelector(".logo");
+  await logoImg.decode();
+
+  const availableHeight = window.innerHeight - app.offsetHeight - 16;
+  const availableWidth  = window.innerWidth - 16;
+  CELL = Math.max(
+    MIN_CELL,
+    Math.floor(
+      Math.min(
+        availableWidth  / (COLS + MAX_ROW * CLUE_RATIO),
+        availableHeight / (ROWS + MAX_COL * CLUE_RATIO)
+      )
+    )
+  );
+  CLUE = Math.round(CELL * CLUE_RATIO);
+  LEFT = MAX_ROW * CLUE + 12;
+  TOP  = MAX_COL * CLUE + 12;
 
   /* HUD */
   const hud = document.createElement("div");
