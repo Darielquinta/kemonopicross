@@ -61,8 +61,8 @@ h1 {
 
 
 .logo {
-  height: 200px;
-  max-width: 100%;
+  width: min(90vw, 400px);
+  height: auto;
   margin-bottom: 1.5rem;
   object-fit: contain;
   will-change: filter;

@@ -71,7 +71,7 @@ async function view() {
 
   /* DOM skeleton */
   const app = document.querySelector("#app");
-  app.innerHTML = `<div style="text-align:center;margin-top:12px"><img src="${logo}" style="max-width:90%"></div>`;
+  app.innerHTML = `<div style="text-align:center;margin-top:12px"><img src="${logo}" class="logo"></div>`;
 
   const wrap = document.createElement("div");
   wrap.style.cssText = "margin:12px auto 0;position:relative;width:fit-content;";
@@ -116,6 +116,19 @@ async function view() {
   window.addEventListener("resize", fitScale);
   fitScale();
 
+  const scaleCanvas = () => {
+    const scale = Math.min(
+      window.innerWidth * 0.95 / can.width,
+      window.innerHeight * 0.75 / can.height,
+      1
+    );
+    can.style.width = `${can.width * scale}px`;
+    can.style.height = `${can.height * scale}px`;
+    rect = null;
+  };
+  window.addEventListener("resize", scaleCanvas);
+  scaleCanvas();
+
   /* TIMER */
   let tStart = 0, tHandle = 0, ticking = false;
   const startTimer = () => {
@@ -134,6 +147,7 @@ async function view() {
   let hoverX=-1, hoverY=-1, dragging=false, btn=0;
   let solved=false, fadeStart=0;
   let remaining = grid.flat().filter(Boolean).length;
+  let rect;
   const solvedYet = () => remaining === 0;
 
   const showBanner = () => {
@@ -221,12 +235,12 @@ async function view() {
   };
 
   can.addEventListener("contextmenu", e => e.preventDefault());
-
-  let rect;
   const updateHover = e => {
     rect = rect || can.getBoundingClientRect();
-    const x = Math.floor((e.clientX - rect.left - LEFT) / CELL);
-    const y = Math.floor((e.clientY - rect.top  - TOP)  / CELL);
+    const scaleX = can.width / rect.width;
+    const scaleY = can.height / rect.height;
+    const x = Math.floor(((e.clientX - rect.left) * scaleX - LEFT) / CELL);
+    const y = Math.floor(((e.clientY - rect.top)  * scaleY - TOP)  / CELL);
     if (x >= 0 && y >= 0 && x < COLS && y < ROWS) { hoverX = x; hoverY = y; }
     else { hoverX = hoverY = -1; }
   };
