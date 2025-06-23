@@ -45,6 +45,8 @@ const runs = arr => {
 };
 const rowClues = grid.map(runs);
 const colClues = Array.from({ length: COLS }, (_, x) => runs(grid.map(r => r[x])));
+const rowCluesRev = rowClues.map(nums => [...nums].reverse());
+const colCluesRev = colClues.map(nums => [...nums].reverse());
 const MAX_ROW = Math.max(...rowClues.map(a => a.length));
 const MAX_COL = Math.max(...colClues.map(a => a.length));
 const LEFT = MAX_ROW * CLUE + 12;   // board origin X
@@ -56,13 +58,16 @@ async function view() {
   const img = new Image();
   img.src = `/${PUZZLE_ID}.png`;            // simplest
   // or: `${import.meta.env.BASE_URL}../${PUZZLE_ID}.png`
-  await img.decode();
+  await Promise.all([img.decode(), swirl.decode()]);
 
   /* answer sprite (1× per cell) */
   const sprite = document.createElement("canvas");
   sprite.width = COLS; sprite.height = ROWS;
   sprite.getContext("2d").drawImage(img, 0, 0, COLS, ROWS);
-  const swirlPat = document.createElement("canvas").getContext("2d").createPattern(swirl, "repeat");
+  const swirlPat = document
+    .createElement("canvas")
+    .getContext("2d")
+    .createPattern(swirl, "repeat");
 
   /* DOM skeleton */
   const app = document.querySelector("#app");
@@ -111,7 +116,8 @@ async function view() {
   const wrong   = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
   let hoverX=-1, hoverY=-1, dragging=false, btn=0;
   let solved=false, fadeStart=0;
-  const solvedYet = () => grid.every((row,y) => row.every((v,x) => !v || correct[y][x]));
+  let remaining = grid.flat().filter(Boolean).length;
+  const solvedYet = () => remaining === 0;
 
   const showBanner = () => {
     const d = document.createElement("div");
@@ -164,10 +170,10 @@ async function view() {
 
     ctx.font=`bold ${CLUE}px monospace`; ctx.fillStyle=COLOR.clueText;
     ctx.textAlign="right"; ctx.textBaseline="middle";
-    rowClues.forEach((nums,y)=>{ const cy=TOP+y*CELL+CELL/2; nums.slice().reverse().forEach((n,i)=> ctx.fillText(n,LEFT-i*CLUE-8,cy)); });
+    rowCluesRev.forEach((nums,y)=>{ const cy=TOP+y*CELL+CELL/2; nums.forEach((n,i)=> ctx.fillText(n,LEFT-i*CLUE-8,cy)); });
 
     ctx.textAlign="center"; ctx.textBaseline="bottom";
-    colClues.forEach((nums,x)=>{ const cx=LEFT+x*CELL+CELL/2; nums.slice().reverse().forEach((n,i)=> ctx.fillText(n,cx,TOP-i*CLUE-8)); });
+    colCluesRev.forEach((nums,x)=>{ const cx=LEFT+x*CELL+CELL/2; nums.forEach((n,i)=> ctx.fillText(n,cx,TOP-i*CLUE-8)); });
 
     ctx.restore();
   };
@@ -186,7 +192,10 @@ async function view() {
       wrong[y][x] = !wrong[y][x];
     } else {                 // left‑click attempts to fill
       if (grid[y][x]) {
-        correct[y][x] = true;
+        if (!correct[y][x]) {
+          correct[y][x] = true;
+          remaining--;
+        }
         wrong[y][x] = false;
       } else {
         wrong[y][x] = true;
