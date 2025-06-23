@@ -39,7 +39,16 @@ const COLOR = {
 
 // helpers
 const grid = PATTERN.map(r=>[...r].map(c=>c==='x'));
-const runs = arr=>{const o=[];let r=0;arr.forEach(v=>{if(v)r++;else if(r){o.push(r);r=0;}});if(r)o.push(r);return o.length?o:[0];};
+const runs = arr => {
+  const out = [];
+  let run = 0;
+  for (let i = 0; i < arr.length; i++) {
+    if (arr[i]) run++; else if (run) { out.push(run); run = 0; }
+  }
+  if (run) out.push(run);
+  if (!out.length) out.push(0);
+  return out;
+};
 const rowClues = grid.map(runs);
 const colClues = Array.from({length:COLS},(_,x)=>runs(grid.map(r=>r[x])));
 const MAX_ROW = Math.max(...rowClues.map(a=>a.length));
@@ -120,8 +129,7 @@ async function view(){
 
   const flip=(x,y,b)=>{ if(b===2){ if(correct[y][x])return; wrong[y][x]=!wrong[y][x]; } else { if(grid[y][x]){correct[y][x]=true;wrong[y][x]=false;} else wrong[y][x]=true; } };
   can.addEventListener('contextmenu',e=>e.preventDefault());
-  let rect;
-  const updateHover=(e)=>{rect=rect||can.getBoundingClientRect(); const x=Math.floor((e.clientX-rect.left-LEFT)/CELL); const y=Math.floor((e.clientY-rect.top-TOP)/CELL); if(x>=0&&y>=0&&x<COLS&&y<ROWS){hoverX=x;hoverY=y;}else{hoverX=hoverY=-1;}};
+  const updateHover=(e)=>{const rect=can.getBoundingClientRect(); const x=Math.floor((e.clientX-rect.left-LEFT)/CELL); const y=Math.floor((e.clientY-rect.top-TOP)/CELL); if(x>=0&&y>=0&&x<COLS&&y<ROWS){hoverX=x;hoverY=y;}else{hoverX=hoverY=-1;}};
 
   can.addEventListener('mousemove',e=>{
     updateHover(e);
@@ -129,7 +137,7 @@ async function view(){
     tick();
   });
 
-  can.addEventListener('mousedown',e=>{if(solved)return; rect=can.getBoundingClientRect(); updateHover(e);const x=hoverX,y=hoverY; if(x<0||y<0)return; dragging=true;btn=e.button; flip(x,y,btn); if(solvedYet()){solved=true;t0=performance.now();can.style.pointerEvents='none';banner();} tick();});
+  can.addEventListener('mousedown',e=>{if(solved)return; updateHover(e); const x=hoverX,y=hoverY; if(x<0||y<0)return; dragging=true;btn=e.button; flip(x,y,btn); if(solvedYet()){solved=true;t0=performance.now();can.style.pointerEvents='none';banner();} tick();});
   window.addEventListener('mouseup',()=>{dragging=false;});
   can.addEventListener('mouseleave',()=>{hoverX=hoverY=-1; tick(); dragging=false;});
 }
