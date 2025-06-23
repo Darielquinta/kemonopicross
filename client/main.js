@@ -53,9 +53,10 @@ const TOP  = MAX_COL * CLUE + 12;   // board origin Y
 /* ───────── MAIN ───────── */
 async function view() {
   const swirl = new Image(); swirl.src = nanoda;
-  const img   = new Image();
-  img.src = `${import.meta.env.BASE_URL}${PUZZLE_ID}.png`;  // <-- THE ONLY LINE YOU NEED
-  await Promise.all([swirl.decode(), img.decode()]);
+  const img = new Image();
+  img.src = `/${PUZZLE_ID}.png`;            // simplest
+  // or: `${import.meta.env.BASE_URL}../${PUZZLE_ID}.png`
+  await img.decode();
 
   /* answer sprite (1× per cell) */
   const sprite = document.createElement("canvas");
