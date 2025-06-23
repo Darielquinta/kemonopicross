@@ -8,6 +8,76 @@ import logo   from "./TitleLogo_en.png";
 import nanoda from "./nanoda.png";
 import "./style.css";
 import ALL_PATTERNS from "./newpatterns.json";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getFirestore, doc, setDoc, collection,
+  query, where, orderBy, limit, getDocs,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+import { DiscordSDK } from "@discord/embedded-app-sdk";
+
+const CLIENT_ID = import.meta.env.VITE_DISCORD_CLIENT_ID;
+if (!CLIENT_ID) throw new Error("Missing Discord client ID in .env file");
+
+// Discord SDK setup
+// -----------------
+
+let me, guildId, channelId;
+
+async function initDiscord() {
+  const discordSdk = new DiscordSDK(CLIENT_ID);
+  await discordSdk.ready();
+
+  const { code } = await discordSdk.commands.authorize({
+    client_id: CLIENT_ID,
+    scopes: ['identify']
+  });
+
+  const authResult = await discordSdk.commands.authenticate({ code });
+  if (!authResult || !authResult.access_token) throw new Error("Auth failed");
+
+  const userInfo = await discordSdk.commands.getUser();
+  const context = await discordSdk.commands.getChannel();
+
+  me = userInfo;
+  guildId = context.guild_id;
+  channelId = context.channel_id;
+}
+
+// ⛽️ Your Firebase config (from project settings)
+const firebaseConfig = {
+
+  apiKey: "AIzaSyAoglCsMPW8nmowfhezLb4JNDAQwDJpOZ0",
+
+  authDomain: "kemono-picross.firebaseapp.com",
+
+  projectId: "kemono-picross",
+
+  storageBucket: "kemono-picross.firebasestorage.app",
+
+  messagingSenderId: "733990606575",
+
+  appId: "1:733990606575:web:e1f30a64ee6ad8e778ed1a",
+
+  measurementId: "G-MV7ZFESMT0"
+
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+async function submitTime(seconds) {
+  const ref = doc(db, "scores", `${guildId}_${PUZZLE_ID}_${me.id}`);
+  await setDoc(ref, {
+    guildId,
+    channelId,
+    userId: me.id,
+    username: `${me.username}#${me.discriminator}`,
+    puzzleId: PUZZLE_ID,
+    seconds,
+    createdAt: serverTimestamp(),
+  });
+}
 
 /* ───────── DAILY SEED ───────── */
 const DAY_MS = 86_400_000;
@@ -238,14 +308,45 @@ async function view() {
       stopTimer();
       fadeStart = performance.now();
       can.style.pointerEvents = "none";
+      const totalSec = Math.floor((Date.now() - tStart) / 1000);
+      submitTime(totalSec).catch(console.error);
       titleEl.style.display = "block";
       showBanner();
     }
     tick();
   });
 
+  async function loadBoard() {
+  const q = query(
+    collection(db, "scores"),
+    where("guildId", "==", guildId),
+    where("puzzleId", "==", PUZZLE_ID),
+    orderBy("seconds"),
+    limit(10)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(d => d.data());
+}
+
+  const board = await loadBoard();
+  hud.appendChild(renderBoard(board));
+
+  function renderBoard(arr) {
+    const box = document.createElement("div");
+    box.style.cssText = `
+      margin-top:6px; background:rgba(0,0,0,0.6); padding:6px 12px;
+      font:14px monospace; border-radius:8px; color:white;
+    `;
+    box.innerHTML = arr.length
+      ? arr.map((r,i) => `${i+1}. ${r.username} – ${Math.floor(r.seconds/60)}:${String(r.seconds%60).padStart(2,'0')}`).join("<br>")
+      : "No scores yet";
+    return box;
+  }
+
+
   window.addEventListener("mouseup",   () => { dragging = false; });
   can   .addEventListener("mouseleave", () => { hoverX = hoverY = -1; dragging = false; tick(); });
 }
 
-view();
+initDiscord().then(view).catch(console.error);
+
