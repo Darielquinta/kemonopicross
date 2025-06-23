@@ -48,7 +48,7 @@ async function initDiscord() {
 // ⛽️ Your Firebase config (from project settings)
 const firebaseConfig = {
 
-  apiKey: "AIzaSyAoglCsMPW8nmowfhezLb4JNDAQwDJpOZ0",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
 
   authDomain: "kemono-picross.firebaseapp.com",
 
@@ -58,11 +58,12 @@ const firebaseConfig = {
 
   messagingSenderId: "733990606575",
 
-  appId: "1:733990606575:web:e1f30a64ee6ad8e778ed1a",
+  appId: "1:733990606575:web:18573b76da3d3ae878ed1a",
 
-  measurementId: "G-MV7ZFESMT0"
+  measurementId: "G-7Q2YCVE14C"
 
 };
+
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
