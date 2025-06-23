@@ -3,9 +3,9 @@
 //  • Hover strip on row/column.
 //  • Timer always visible; puzzle name appears only after solve.
 // ---------------------------------------------------------------
-import { DiscordSDK } from "@discord/embedded-app-sdk";
-import logo   from "/TitleLogo_en.png";
-import nanoda from "/nanoda.png";
+
+import logo   from "./TitleLogo_en.png";
+import nanoda from "./nanoda.png";
 import "./style.css";
 import ALL_PATTERNS from "./newpatterns.json";
 
@@ -52,9 +52,9 @@ const TOP  = MAX_COL * CLUE + 12;   // board origin Y
 
 /* ───────── MAIN ───────── */
 async function view() {
-  /* ‑‑ preload images ‑‑ */
   const swirl = new Image(); swirl.src = nanoda;
-  const img   = new Image(); img.src   = `/${PUZZLE_ID}.png`;
+  const img   = new Image();
+  img.src = `${import.meta.env.BASE_URL}${PUZZLE_ID}.png`;  // <-- THE ONLY LINE YOU NEED
   await Promise.all([swirl.decode(), img.decode()]);
 
   /* answer sprite (1× per cell) */
