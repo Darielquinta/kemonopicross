@@ -71,10 +71,10 @@ async function view() {
 
   /* DOM skeleton */
   const app = document.querySelector("#app");
-  app.innerHTML = `<div style="text-align:center;margin-top:12px"><img src="${logo}" style="max-width:90%"></div>`;
+  app.innerHTML = `<div style="text-align:center;margin-top:12px"><img src="${logo}" class="logo"></div>`;
 
   const wrap = document.createElement("div");
-  wrap.style.cssText = "margin-top:12px;position:relative;display:inline-block;";
+  wrap.style.cssText = "margin:12px auto 0;position:relative;width:fit-content;";
   app.appendChild(wrap);
 
   /* HUD */
@@ -98,6 +98,23 @@ async function view() {
   can.height = TOP  + ROWS * CELL + 4;
   wrap.appendChild(can);
   const ctx = can.getContext("2d");
+  let rect;
+
+  /* responsive scaling */
+  let scale = 1;
+  const fitScale = () => {
+    const boardW = can.width;
+    const boardH = can.height;
+    const margin = 20;
+    const scaleX = (window.innerWidth - margin) / boardW;
+    const scaleY = (window.innerHeight - margin) / (boardH + 200);
+    scale = Math.min(scaleX, scaleY);
+    wrap.style.transformOrigin = "top center";
+    wrap.style.transform = `scale(${scale})`;
+    rect = null;
+  };
+  window.addEventListener("resize", fitScale);
+  fitScale();
 
   /* TIMER */
   let tStart = 0, tHandle = 0, ticking = false;
@@ -205,11 +222,12 @@ async function view() {
 
   can.addEventListener("contextmenu", e => e.preventDefault());
 
-  let rect;
   const updateHover = e => {
     rect = rect || can.getBoundingClientRect();
-    const x = Math.floor((e.clientX - rect.left - LEFT) / CELL);
-    const y = Math.floor((e.clientY - rect.top  - TOP)  / CELL);
+    const scaledX = (e.clientX - rect.left) / scale;
+    const scaledY = (e.clientY - rect.top)  / scale;
+    const x = Math.floor((scaledX - LEFT) / CELL);
+    const y = Math.floor((scaledY - TOP)  / CELL);
     if (x >= 0 && y >= 0 && x < COLS && y < ROWS) { hoverX = x; hoverY = y; }
     else { hoverX = hoverY = -1; }
   };
