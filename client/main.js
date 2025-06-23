@@ -71,7 +71,7 @@ async function view() {
 
   /* DOM skeleton */
   const app = document.querySelector("#app");
-  app.innerHTML = `<div style="text-align:center;margin-top:12px"><img src="${logo}" class="logo"></div>`;
+  app.innerHTML = `<div style="text-align:center;margin-top:12px"><img src="${logo}" style="max-width:90%"></div>`;
 
   const wrap = document.createElement("div");
   wrap.style.cssText = "margin:12px auto 0;position:relative;width:fit-content;";
@@ -222,12 +222,11 @@ async function view() {
 
   can.addEventListener("contextmenu", e => e.preventDefault());
 
+  let rect;
   const updateHover = e => {
     rect = rect || can.getBoundingClientRect();
-    const scaledX = (e.clientX - rect.left) / scale;
-    const scaledY = (e.clientY - rect.top)  / scale;
-    const x = Math.floor((scaledX - LEFT) / CELL);
-    const y = Math.floor((scaledY - TOP)  / CELL);
+    const x = Math.floor((e.clientX - rect.left - LEFT) / CELL);
+    const y = Math.floor((e.clientY - rect.top  - TOP)  / CELL);
     if (x >= 0 && y >= 0 && x < COLS && y < ROWS) { hoverX = x; hoverY = y; }
     else { hoverX = hoverY = -1; }
   };

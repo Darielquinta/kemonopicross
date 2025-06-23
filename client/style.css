@@ -61,8 +61,8 @@ h1 {
 
 
 .logo {
-  max-width: 90vw;
-  height: auto;
+  height: 200px;
+  max-width: 100%;
   margin-bottom: 1.5rem;
   object-fit: contain;
   will-change: filter;
@@ -73,12 +73,6 @@ h1 {
 }
 .logo.vanilla:hover {
   filter: drop-shadow(0 0 2em #f7df1eaa);
-}
-
-@media (min-width: 768px) {
-  .logo {
-    max-width: 600px;
-  }
 }
 
 button {
@@ -111,10 +105,4 @@ button:focus-visible {
   button {
     background-color: #f9f9f9;
   }
-}
-
-canvas {
-  display: block;
-  max-width: 100%;
-  height: auto;
 }
