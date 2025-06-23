@@ -7,7 +7,7 @@
     "dev": "vite",
     "tunnel": "cloudflared tunnel run picross-tunnel",
     "start": "concurrently \"npm run dev\" \"npm run tunnel\"",
-    "build": "vite build",
+    "build": "vite build && mkdir -p dist/picross && mv dist/assets dist/picross/",
     "preview": "vite preview"
   },
   "devDependencies": {

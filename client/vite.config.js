@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  base: "/picross/",
+  base: "/",
   envDir: '../',
   server: {
     host: true,                 // listen on all interfaces
