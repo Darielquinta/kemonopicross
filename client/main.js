@@ -9,6 +9,20 @@ import nanoda from "./nanoda.png";
 import "./style.css";
 import ALL_PATTERNS from "./newpatterns.json";
 
+let ACCESS_TOKEN = null;
+async function authenticate() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get("code");
+  if (!code) return;
+  const res = await fetch("/api/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code }),
+  });
+  const data = await res.json();
+  ACCESS_TOKEN = data.access_token;
+}
+
 /* ───────── DAILY SEED ───────── */
 const DAY_MS = 86_400_000;
 const epoch  = new Date(2025, 0, 1);            // Jan‑01‑2025 = puzzle 0
@@ -104,13 +118,33 @@ async function view() {
   timeEl.style.cssText = "font:600 18px monospace;color:#fff;background:rgba(0,0,0,.65);padding:2px 8px;border-radius:4px;text-shadow:0 0 6px #000;";
   hud.appendChild(timeEl);
 
+  const scoreEl = document.createElement("div");
+  scoreEl.style.cssText = "font:600 14px monospace;color:#fff;background:rgba(0,0,0,.65);padding:2px 8px;border-radius:4px;text-shadow:0 0 6px #000;white-space:pre;";
+  hud.appendChild(scoreEl);
+
+  async function submitScore() {
+    if (!ACCESS_TOKEN) return;
+    try {
+      const res = await fetch("/api/time", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ access_token: ACCESS_TOKEN, puzzle_id: PUZZLE_ID, time: elapsed }),
+      });
+      const data = await res.json();
+      scoreEl.textContent = data.leaderboard
+        .map((e, i) => `${i + 1}. ${e.username} - ${e.time}s`)
+        .join("\n");
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
   /* canvas */
   const can = document.createElement("canvas");
   can.width  = LEFT + COLS * CELL + 4;
   can.height = TOP  + ROWS * CELL + 4;
   wrap.appendChild(can);
   const ctx = can.getContext("2d");
-  let rect;
 
   /* responsive scaling */
   let scale = 1;
@@ -151,7 +185,8 @@ async function view() {
       timeEl.textContent = `Time: ${Math.floor(sec/60)}:${String(sec%60).padStart(2,"0")}`;
     }, 1000);
   };
-  const stopTimer = () => { clearInterval(tHandle); ticking = false; };
+  let elapsed = 0;
+  const stopTimer = () => { clearInterval(tHandle); ticking = false; elapsed = Math.floor((Date.now() - tStart) / 1000); };
 
   /* STATE */
   const correct = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
@@ -269,6 +304,7 @@ async function view() {
         can.style.pointerEvents = "none";
         titleEl.style.display = "block";   // reveal name
         showBanner();
+        submitScore();
       }
     }
     tick();
@@ -292,6 +328,7 @@ async function view() {
       can.style.pointerEvents = "none";
       titleEl.style.display = "block";
       showBanner();
+      submitScore();
     }
     tick();
   });
@@ -300,4 +337,4 @@ async function view() {
   can   .addEventListener("mouseleave", () => { hoverX = hoverY = -1; dragging = false; tick(); });
 }
 
-view();
+authenticate().then(view);
