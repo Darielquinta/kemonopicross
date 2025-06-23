@@ -1,0 +1,25 @@
+[
+  {
+    "id": "footsteps",
+    "pattern": ["xxoxx", "oxxxo", "xxoxx", "xooox", "xxoxx"]
+  },
+  {
+    "id": "japari-cafe",
+    "pattern": ["oooox", "xxxxo", "xxxxx", "xxxxo", "oxxoo"]
+  },
+  {
+    "id": "no",
+    "pattern": ["xooox", "oxxxo", "xooox", "xoxox", "xxoox"]
+  },
+  {
+    "id": "panther-chameleon",
+    "pattern": ["xxxxxxxxxx", "oxxoxooxxx", "xxooxoooxx", "xxxoooxxxx", "xxoxxxoxox", "xoxxoooxxo", "xxoxoooxox", "xxooooooox", "xxxoooxoxx", "oxxxxxxxxx"]
+  },
+  {
+    "id": "alpaca-suri",
+    "pattern": [
+      "xoxxooxxox", "xxooooooxx", "xoooooxoox", "xoooxooxox", "xoooxxxxox",
+      "oxooxoxoxo", "xoxxxoxoxo", "xoxoooooxo", "xxxooxoxxx", "xooxxxxxoo"
+    ]
+  }
+]
