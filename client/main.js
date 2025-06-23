@@ -18,8 +18,6 @@ const { id: PUZZLE_ID, pattern: PATTERN } = ALL_PATTERNS[idx];
 /* ───────── BOARD CONSTANTS ───────── */
 const ROWS = PATTERN.length;
 const COLS = PATTERN[0].length;
-const CELL = 69;      // px per cell
-const CLUE = 22;      // px font size for clues
 const FADE = 1000;    // ms fade‑in for sprite
 
 /* ───────── COLOUR PALETTE ───────── */
@@ -49,6 +47,20 @@ const rowCluesRev = rowClues.map(nums => [...nums].reverse());
 const colCluesRev = colClues.map(nums => [...nums].reverse());
 const MAX_ROW = Math.max(...rowClues.map(a => a.length));
 const MAX_COL = Math.max(...colClues.map(a => a.length));
+
+const CLUE_RATIO = 22 / 69;
+const MIN_CELL = 30;
+const CELL = Math.max(
+  MIN_CELL,
+  Math.floor(
+    Math.min(
+      (window.innerWidth - 16) / (COLS + MAX_ROW * CLUE_RATIO),
+      (window.innerHeight - 16) / (ROWS + MAX_COL * CLUE_RATIO)
+    )
+  )
+);
+const CLUE = Math.round(CELL * CLUE_RATIO);
+
 const LEFT = MAX_ROW * CLUE + 12;   // board origin X
 const TOP  = MAX_COL * CLUE + 12;   // board origin Y
 
