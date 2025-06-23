@@ -88,8 +88,6 @@ const { id: PUZZLE_ID, pattern: PATTERN } = ALL_PATTERNS[idx];
 /* ───────── BOARD CONSTANTS ───────── */
 const ROWS = PATTERN.length;
 const COLS = PATTERN[0].length;
-const CELL = 69;      // px per cell
-const CLUE = 22;      // px font size for clues
 const FADE = 1000;    // ms fade‑in for sprite
 
 /* ───────── COLOUR PALETTE ───────── */
@@ -115,8 +113,24 @@ const runs = arr => {
 };
 const rowClues = grid.map(runs);
 const colClues = Array.from({ length: COLS }, (_, x) => runs(grid.map(r => r[x])));
+const rowCluesRev = rowClues.map(nums => [...nums].reverse());
+const colCluesRev = colClues.map(nums => [...nums].reverse());
 const MAX_ROW = Math.max(...rowClues.map(a => a.length));
 const MAX_COL = Math.max(...colClues.map(a => a.length));
+
+const CLUE_RATIO = 22 / 69;
+const MIN_CELL = 30;
+const CELL = Math.max(
+  MIN_CELL,
+  Math.floor(
+    Math.min(
+      (window.innerWidth - 16) / (COLS + MAX_ROW * CLUE_RATIO),
+      (window.innerHeight - 16) / (ROWS + MAX_COL * CLUE_RATIO)
+    )
+  )
+);
+const CLUE = Math.round(CELL * CLUE_RATIO);
+
 const LEFT = MAX_ROW * CLUE + 12;   // board origin X
 const TOP  = MAX_COL * CLUE + 12;   // board origin Y
 
@@ -126,20 +140,23 @@ async function view() {
   const img = new Image();
   img.src = `/${PUZZLE_ID}.png`;            // simplest
   // or: `${import.meta.env.BASE_URL}../${PUZZLE_ID}.png`
-  await img.decode();
+  await Promise.all([img.decode(), swirl.decode()]);
 
   /* answer sprite (1× per cell) */
   const sprite = document.createElement("canvas");
   sprite.width = COLS; sprite.height = ROWS;
   sprite.getContext("2d").drawImage(img, 0, 0, COLS, ROWS);
-  const swirlPat = document.createElement("canvas").getContext("2d").createPattern(swirl, "repeat");
+  const swirlPat = document
+    .createElement("canvas")
+    .getContext("2d")
+    .createPattern(swirl, "repeat");
 
   /* DOM skeleton */
   const app = document.querySelector("#app");
-  app.innerHTML = `<div style="text-align:center;margin-top:12px"><img src="${logo}" style="max-width:90%"></div>`;
+  app.innerHTML = `<div style="text-align:center;margin-top:12px"><img src="${logo}" class="logo"></div>`;
 
   const wrap = document.createElement("div");
-  wrap.style.cssText = "margin-top:12px;position:relative;display:inline-block;";
+  wrap.style.cssText = "margin:12px auto 0;position:relative;width:fit-content;";
   app.appendChild(wrap);
 
   /* HUD */
@@ -157,12 +174,62 @@ async function view() {
   timeEl.style.cssText = "font:600 18px monospace;color:#fff;background:rgba(0,0,0,.65);padding:2px 8px;border-radius:4px;text-shadow:0 0 6px #000;";
   hud.appendChild(timeEl);
 
+  const scoreEl = document.createElement("div");
+  scoreEl.style.cssText = "font:600 14px monospace;color:#fff;background:rgba(0,0,0,.65);padding:2px 8px;border-radius:4px;text-shadow:0 0 6px #000;white-space:pre;";
+  hud.appendChild(scoreEl);
+
+  async function submitScore() {
+    if (!ACCESS_TOKEN) return;
+    try {
+      const res = await fetch("/api/time", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ access_token: ACCESS_TOKEN, puzzle_id: PUZZLE_ID, time: elapsed }),
+      });
+      const data = await res.json();
+      scoreEl.textContent = data.leaderboard
+        .map((e, i) => `${i + 1}. ${e.username} - ${e.time}s`)
+        .join("\n");
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
   /* canvas */
   const can = document.createElement("canvas");
   can.width  = LEFT + COLS * CELL + 4;
   can.height = TOP  + ROWS * CELL + 4;
   wrap.appendChild(can);
   const ctx = can.getContext("2d");
+
+  /* responsive scaling */
+  let scale = 1;
+  const fitScale = () => {
+    const boardW = can.width;
+    const boardH = can.height;
+    const margin = 20;
+    const scaleX = (window.innerWidth - margin) / boardW;
+    const scaleY = (window.innerHeight - margin) / (boardH + 200);
+    scale = Math.min(scaleX, scaleY);
+    wrap.style.transformOrigin = "top center";
+    wrap.style.transform = `scale(${scale})`;
+    rect = null;
+  };
+  window.addEventListener("resize", fitScale);
+  fitScale();
+
+  const scaleCanvas = () => {
+    const scale = Math.min(
+      window.innerWidth * 0.95 / can.width,
+      window.innerHeight * 0.75 / can.height,
+      1
+    );
+    can.style.width = `${can.width * scale}px`;
+    can.style.height = `${can.height * scale}px`;
+    rect = null;
+  };
+  window.addEventListener("resize", scaleCanvas);
+  scaleCanvas();
 
   /* TIMER */
   let tStart = 0, tHandle = 0, ticking = false;
@@ -174,14 +241,17 @@ async function view() {
       timeEl.textContent = `Time: ${Math.floor(sec/60)}:${String(sec%60).padStart(2,"0")}`;
     }, 1000);
   };
-  const stopTimer = () => { clearInterval(tHandle); ticking = false; };
+  let elapsed = 0;
+  const stopTimer = () => { clearInterval(tHandle); ticking = false; elapsed = Math.floor((Date.now() - tStart) / 1000); };
 
   /* STATE */
   const correct = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
   const wrong   = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
   let hoverX=-1, hoverY=-1, dragging=false, btn=0;
   let solved=false, fadeStart=0;
-  const solvedYet = () => grid.every((row,y) => row.every((v,x) => !v || correct[y][x]));
+  let remaining = grid.flat().filter(Boolean).length;
+  let rect;
+  const solvedYet = () => remaining === 0;
 
   const showBanner = () => {
     const d = document.createElement("div");
@@ -234,10 +304,10 @@ async function view() {
 
     ctx.font=`bold ${CLUE}px monospace`; ctx.fillStyle=COLOR.clueText;
     ctx.textAlign="right"; ctx.textBaseline="middle";
-    rowClues.forEach((nums,y)=>{ const cy=TOP+y*CELL+CELL/2; nums.slice().reverse().forEach((n,i)=> ctx.fillText(n,LEFT-i*CLUE-8,cy)); });
+    rowCluesRev.forEach((nums,y)=>{ const cy=TOP+y*CELL+CELL/2; nums.forEach((n,i)=> ctx.fillText(n,LEFT-i*CLUE-8,cy)); });
 
     ctx.textAlign="center"; ctx.textBaseline="bottom";
-    colClues.forEach((nums,x)=>{ const cx=LEFT+x*CELL+CELL/2; nums.slice().reverse().forEach((n,i)=> ctx.fillText(n,cx,TOP-i*CLUE-8)); });
+    colCluesRev.forEach((nums,x)=>{ const cx=LEFT+x*CELL+CELL/2; nums.forEach((n,i)=> ctx.fillText(n,cx,TOP-i*CLUE-8)); });
 
     ctx.restore();
   };
@@ -256,7 +326,10 @@ async function view() {
       wrong[y][x] = !wrong[y][x];
     } else {                 // left‑click attempts to fill
       if (grid[y][x]) {
-        correct[y][x] = true;
+        if (!correct[y][x]) {
+          correct[y][x] = true;
+          remaining--;
+        }
         wrong[y][x] = false;
       } else {
         wrong[y][x] = true;
@@ -265,12 +338,12 @@ async function view() {
   };
 
   can.addEventListener("contextmenu", e => e.preventDefault());
-
-  let rect;
   const updateHover = e => {
     rect = rect || can.getBoundingClientRect();
-    const x = Math.floor((e.clientX - rect.left - LEFT) / CELL);
-    const y = Math.floor((e.clientY - rect.top  - TOP)  / CELL);
+    const scaleX = can.width / rect.width;
+    const scaleY = can.height / rect.height;
+    const x = Math.floor(((e.clientX - rect.left) * scaleX - LEFT) / CELL);
+    const y = Math.floor(((e.clientY - rect.top)  * scaleY - TOP)  / CELL);
     if (x >= 0 && y >= 0 && x < COLS && y < ROWS) { hoverX = x; hoverY = y; }
     else { hoverX = hoverY = -1; }
   };
@@ -287,6 +360,7 @@ async function view() {
         can.style.pointerEvents = "none";
         titleEl.style.display = "block";   // reveal name
         showBanner();
+        submitScore();
       }
     }
     tick();
@@ -312,6 +386,7 @@ async function view() {
       submitTime(totalSec).catch(console.error);
       titleEl.style.display = "block";
       showBanner();
+      submitScore();
     }
     tick();
   });
