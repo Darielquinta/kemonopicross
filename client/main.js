@@ -429,5 +429,15 @@ if (!board.some(e => e.userId === me.id)) {
   can   .addEventListener("mouseleave", () => { hoverX = hoverY = -1; dragging = false; tick(); });
 }
 
-initDiscord().then(view).catch(console.error);
+initDiscord()
+  .catch(e => {                       // ← this block runs if Discord auth blows up
+    console.warn('[Discord SDK]', e);
+
+    // safe fall-backs so the rest of the code (scores, etc.) won’t explode
+    me        = { id: 'anon', username: 'Anonymous', discriminator: '0000' };
+    guildId   = 'local';
+    channelId = 'local';
+  })
+  .then(view);                        // ← UI builds no matter what
+
 
