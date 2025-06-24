@@ -10,12 +10,17 @@ let readyPromise;
 export function initDiscord() {
   if (readyPromise) return readyPromise;                 // idempotent
   readyPromise = sdk.ready().then(() => {
-    // who’s in the room?
+    /* keep track of “me” once the participant list arrives */
+    let meId = null;
+
     sdk.subscribe("ACTIVITY_INSTANCE_PARTICIPANTS_UPDATE",
-      ({ participants: list }) => {
-        list.forEach(p => participants.set(p.user_id, p));
+    ({ participants: list }) => {
+        list.forEach(p => {
+        participants.set(p.user_id, p);
+        if (p.is_current_user) meId = p.user_id;   // 👈 grab my ID
+        });
         window.renderLeaderboard?.();
-      });
+    });
 
     // who just posted a score?
     sdk.subscribe("ACTIVITY_INSTANCE_STATE_UPDATE",
@@ -29,8 +34,14 @@ export function initDiscord() {
   return readyPromise;
 }
 
-// shout your solve-time in ms
+/* shout your time and update yourself immediately */
 export async function postTime(ms) {
-  await initDiscord();                              // makes sure SDK is ready
+  await initDiscord();                       // ensure SDK ready
+
+  if (meId) {                                // local echo
+    scores.set(meId, ms);
+    window.renderLeaderboard?.();
+  }
+
   return sdk.commands.setActivityInstanceState({ timeMs: ms });
 }
