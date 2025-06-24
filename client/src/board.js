@@ -271,7 +271,7 @@ renderLeaderboard();
 
         solved = true;
         const ms = stopTimer();
-        await postTime(ms); 
+        postTime(ms); 
 
         titleEl.style.display = "block";
         fadeStart = performance.now();
@@ -297,7 +297,7 @@ renderLeaderboard();
     if (solvedYet()) {
       solved = true;
       const ms = stopTimer();
-      await postTime(ms); 
+      postTime(ms); 
 
       fadeStart = performance.now();
       can.style.pointerEvents = "none";
