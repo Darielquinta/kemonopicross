@@ -204,6 +204,7 @@ async function view() {
   can.height = TOP  + ROWS * CELL + 4;
   wrap.appendChild(can);
   const ctx = can.getContext("2d");
+  var rect = null;
 
   /* responsive scaling */
   let scale = 1;
