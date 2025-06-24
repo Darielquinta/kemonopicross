@@ -32,14 +32,22 @@ async function initDiscord() {
   // ① ask for a *token* (implicit grant)
   const { code } = await discordSdk.commands.authorize({
     client_id: CLIENT_ID,
-    scopes: ['identify'],   // we’ll add more in a sec
+    scopes: ['identify', 'rpc.activity.write']
   });
   console.log('OAuth code from Discord:', code);   // ← should be a long string
 
-
-  // ② register that token with the SDK
-  await discordSdk.commands.authenticate({ access_token });
-  ACCESS_TOKEN = access_token;     // (keep if you ever call your own backend)
+  const authRes = await discordSdk.commands.authenticate({
+    client_id: CLIENT_ID,
+    code
+  });
+  const accessToken =
+    authRes.access_token ??           // new SDK shape
+    authRes.data?.access_token;       // old SDK shape
+  if (!accessToken) {
+    console.error('authenticate() response →', authRes);
+    throw new Error('Failed to obtain access token');
+  }
+  ACCESS_TOKEN = accessToken;
 
   // ③ now the usual user / context calls succeed
   const { user }    = await discordSdk.commands.getUser();
