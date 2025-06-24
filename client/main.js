@@ -8,90 +8,6 @@ import logo   from "./TitleLogo_en.png";
 import nanoda from "./nanoda.png";
 import "./style.css";
 import ALL_PATTERNS from "./newpatterns.json";
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import {
-  getFirestore, doc, setDoc, collection,
-  query, where, orderBy, limit, getDocs,
-  serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-import { DiscordSDK } from "@discord/embedded-app-sdk";
-
-const CLIENT_ID = import.meta.env.VITE_DISCORD_CLIENT_ID;
-if (!CLIENT_ID) throw new Error("Missing Discord client ID in .env file");
-
-// Discord SDK setup
-// -----------------
-
-let me, guildId, channelId, ACCESS_TOKEN;
-
-async function initDiscord() {
-  const discordSdk = new DiscordSDK(CLIENT_ID);
-  await discordSdk.ready();
-
-  // ① ask for a *token* (implicit grant)
-  const { code } = await discordSdk.commands.authorize({
-    client_id: CLIENT_ID,
-    scopes: ['identify', 'activities.write']
-  });
-  console.log('OAuth code from Discord:', code);   // ← should be a long string
-
-  const authRes = await discordSdk.commands.authenticate({
-    client_id: CLIENT_ID,
-    code
-  });
-  const accessToken =
-    authRes.access_token ??           // new SDK shape
-    authRes.data?.access_token;       // old SDK shape
-  if (!accessToken) {
-    console.error('authenticate() response →', authRes);
-    throw new Error('Failed to obtain access token');
-  }
-  ACCESS_TOKEN = accessToken;
-
-  // ③ now the usual user / context calls succeed
-  const { user }    = await discordSdk.commands.getUser();
-  const { guild_id, channel_id } = await discordSdk.commands.getChannel();
-  me        = user;
-  guildId   = guild_id;
-  channelId = channel_id;
-}
-
-
-// ⛽️ Your Firebase config (from project settings)
-const firebaseConfig = {
-
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-
-  authDomain: "kemono-picross.firebaseapp.com",
-
-  projectId: "kemono-picross",
-
-  storageBucket: "kemono-picross.appspot.com",
-
-  messagingSenderId: "733990606575",
-
-  appId: "1:733990606575:web:18573b76da3d3ae878ed1a",
-
-  measurementId: "G-7Q2YCVE14C"
-
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-async function submitTime(seconds) {
-  const ref = doc(db, "scores", `${guildId}_${PUZZLE_ID}_${me.id}`);
-  await setDoc(ref, {
-    guildId,
-    channelId,
-    userId: me.id,
-    username: `${me.username}#${me.discriminator}`,
-    puzzleId: PUZZLE_ID,
-    seconds,
-    createdAt: serverTimestamp(),
-  });
-}
 
 /* ───────── DAILY SEED ───────── */
 const DAY_MS = 86_400_000;
@@ -150,26 +66,21 @@ const TOP  = MAX_COL * CLUE + 12;   // board origin Y
 
 /* ───────── MAIN ───────── */
 async function view() {
-  /* ---------- load the two images ---------- */
-  const swirl = new Image();
-  swirl.crossOrigin = 'anonymous';      // CORS-safe so createPattern works
-  swirl.src = nanoda;
-
+  let rect = null;
+  const swirl = new Image(); swirl.src = nanoda;
   const img = new Image();
-  img.src = new URL(`./puzzles/${PUZZLE_ID}.png`, import.meta.url).href;
+  img.src = `${PUZZLE_ID}.png`;            // simplest
+  // or: `${import.meta.env.BASE_URL}../${PUZZLE_ID}.png`
+  await Promise.all([img.decode(), swirl.decode()]);
 
-  // wait until both bitmaps are fully decoded
-  await Promise.all([swirl.decode(), img.decode()]);
-
-  /* ---------- build the sprite for the solution ---------- */
-  const sprite = document.createElement('canvas');
-  sprite.width  = COLS;
-  sprite.height = ROWS;
-  sprite.getContext('2d').drawImage(img, 0, 0, COLS, ROWS);
-
-  /* ---------- make the repeating forest pattern ---------- */
-  const swirlPatCtx = document.createElement('canvas').getContext('2d');
-  const swirlPat    = swirlPatCtx.createPattern(swirl, 'repeat');
+  /* answer sprite (1× per cell) */
+  const sprite = document.createElement("canvas");
+  sprite.width = COLS; sprite.height = ROWS;
+  sprite.getContext("2d").drawImage(img, 0, 0, COLS, ROWS);
+  const swirlPat = document
+    .createElement("canvas")
+    .getContext("2d")
+    .createPattern(swirl, "repeat");
 
   /* DOM skeleton */
   const app = document.querySelector("#app");
@@ -194,16 +105,13 @@ async function view() {
   timeEl.style.cssText = "font:600 18px monospace;color:#fff;background:rgba(0,0,0,.65);padding:2px 8px;border-radius:4px;text-shadow:0 0 6px #000;";
   hud.appendChild(timeEl);
 
-  const scoreEl = document.createElement("div");
-  scoreEl.style.cssText = "font:600 14px monospace;color:#fff;background:rgba(0,0,0,.65);padding:2px 8px;border-radius:4px;text-shadow:0 0 6px #000;white-space:pre;";
-  hud.appendChild(scoreEl);
-
   /* canvas */
   const can = document.createElement("canvas");
   can.width  = LEFT + COLS * CELL + 4;
   can.height = TOP  + ROWS * CELL + 4;
   wrap.appendChild(can);
   const ctx = can.getContext("2d");
+  rect = null;
 
   /* responsive scaling */
   let scale = 1;
@@ -244,8 +152,7 @@ async function view() {
       timeEl.textContent = `Time: ${Math.floor(sec/60)}:${String(sec%60).padStart(2,"0")}`;
     }, 1000);
   };
-  let elapsed = 0;
-  const stopTimer = () => { clearInterval(tHandle); ticking = false; elapsed = Math.floor((Date.now() - tStart) / 1000); };
+  const stopTimer = () => { clearInterval(tHandle); ticking = false; };
 
   /* STATE */
   const correct = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
@@ -253,7 +160,6 @@ async function view() {
   let hoverX=-1, hoverY=-1, dragging=false, btn=0;
   let solved=false, fadeStart=0;
   let remaining = grid.flat().filter(Boolean).length;
-  let rect;
   const solvedYet = () => remaining === 0;
 
   const showBanner = () => {
@@ -265,24 +171,14 @@ async function view() {
 
   /* DRAWER */
   const draw = alpha => {
-    ctx.clearRect(0, 0, can.width, can.height);
+    ctx.clearRect(0,0,can.width,can.height);
 
-    // sprite fade-in
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
-    ctx.globalAlpha = 1 - alpha;
-    ctx.drawImage(sprite, LEFT, TOP, COLS * CELL, ROWS * CELL);
-    ctx.restore();
+    // sprite fade‑in
+    ctx.save(); ctx.imageSmoothingEnabled=false; ctx.globalAlpha=1-alpha;
+    ctx.drawImage(sprite, LEFT, TOP, COLS*CELL, ROWS*CELL); ctx.restore();
 
-    ctx.save();
-    ctx.globalAlpha = alpha;
-
-    if (swirlPat) {                      // <- guard against null
-      ctx.fillStyle = swirlPat;
-      ctx.globalAlpha *= 0.25;
-      ctx.fillRect(0, 0, can.width, can.height);
-    }
-    ctx.globalAlpha = alpha;
+    ctx.save(); ctx.globalAlpha=alpha;
+    ctx.fillStyle=swirlPat; ctx.globalAlpha*=.25; ctx.fillRect(0,0,can.width,can.height); ctx.globalAlpha=alpha;
 
     ctx.fillStyle=COLOR.clueBg;
     ctx.fillRect(0,0,LEFT-2,TOP-2);
@@ -394,67 +290,14 @@ async function view() {
       stopTimer();
       fadeStart = performance.now();
       can.style.pointerEvents = "none";
-      const totalSec = Math.floor((Date.now() - tStart) / 1000);
-      submitTime(totalSec).catch(console.error);
       titleEl.style.display = "block";
+      showBanner();
     }
     tick();
   });
-
-  async function loadBoard() {
-  const q = query(
-    collection(db, "scores"),
-    where("guildId", "==", guildId),
-    where("puzzleId", "==", PUZZLE_ID),
-    orderBy("seconds"),
-    limit(10)
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map(d => d.data());
-}
-
-  const board = await loadBoard();
-hud.appendChild(renderBoard(board));
-
-if (!board.some(e => e.userId === me.id)) {
-  const ref = doc(db, "scores", `${guildId}_${PUZZLE_ID}_${me.id}`);
-  const snap = await getDoc(ref);
-  if (snap.exists()) {
-    const e = snap.data();
-    const soloScore = document.createElement("div");
-    soloScore.textContent = `Your time: ${Math.floor(e.seconds/60)}:${String(e.seconds%60).padStart(2, '0')}`;
-    soloScore.style.cssText = "margin-top:6px;font:14px monospace;color:white;background:#333;padding:4px 10px;border-radius:6px;";
-    hud.appendChild(soloScore);
-  }
-}
-
-
-  function renderBoard(arr) {
-    const box = document.createElement("div");
-    box.style.cssText = `
-      margin-top:6px; background:rgba(0,0,0,0.6); padding:6px 12px;
-      font:14px monospace; border-radius:8px; color:white;
-    `;
-    box.innerHTML = arr.length
-      ? arr.map((r,i) => `${i+1}. ${r.username} – ${Math.floor(r.seconds/60)}:${String(r.seconds%60).padStart(2,'0')}`).join("<br>")
-      : "No scores yet";
-    return box;
-  }
-
 
   window.addEventListener("mouseup",   () => { dragging = false; });
   can   .addEventListener("mouseleave", () => { hoverX = hoverY = -1; dragging = false; tick(); });
 }
 
-initDiscord()
-  .catch(e => {                       // ← this block runs if Discord auth blows up
-    console.warn('[Discord SDK]', e);
-
-    // safe fall-backs so the rest of the code (scores, etc.) won’t explode
-    me        = { id: 'anon', username: 'Anonymous', discriminator: '0000' };
-    guildId   = 'local';
-    channelId = 'local';
-  })
-  .then(view);                        // ← UI builds no matter what
-
-
+view();
