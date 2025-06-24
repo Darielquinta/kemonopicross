@@ -32,7 +32,7 @@ async function initDiscord() {
   // ① ask for a *token* (implicit grant)
   const { code } = await discordSdk.commands.authorize({
     client_id: CLIENT_ID,
-    scopes: ['identify', 'rpc.activity.write']
+    scopes: ['identify', 'activities.write']
   });
   console.log('OAuth code from Discord:', code);   // ← should be a long string
 
@@ -152,8 +152,7 @@ const TOP  = MAX_COL * CLUE + 12;   // board origin Y
 async function view() {
   const swirl = new Image(); swirl.src = nanoda;
   const img = new Image();
-  img.src = `${import.meta.env.BASE_URL}${PUZZLE_ID}.png`;
-  await Promise.all([img.decode(), swirl.decode()]);
+  img.src = new URL(`./puzzles/${PUZZLE_ID}.png`, import.meta.url).href;
 
   /* answer sprite (1× per cell) */
   const sprite = document.createElement("canvas");
