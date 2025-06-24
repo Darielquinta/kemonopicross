@@ -1,29 +1,36 @@
-// src/discord-lite.js
 import { DiscordSDK } from "@discord/embedded-app-sdk";
 
 export const sdk = new DiscordSDK(import.meta.env.VITE_DISCORD_CLIENT_ID);
-await sdk.ready();
 
-/* who’s here? -------------------------------------------------------------- */
-export const participants = new Map();       // user_id → {username, …}
-sdk.subscribe("ACTIVITY_INSTANCE_PARTICIPANTS_UPDATE",
-  ({ participants: list }) => {
-    list.forEach(p => participants.set(p.user_id, p));
-    window.renderLeaderboard?.();            // repaint if names changed
+export const participants = new Map();  // user_id → profile
+export const scores       = new Map();  // user_id → ms
+
+// one-time handshake
+let readyPromise;
+export function initDiscord() {
+  if (readyPromise) return readyPromise;                 // idempotent
+  readyPromise = sdk.ready().then(() => {
+    // who’s in the room?
+    sdk.subscribe("ACTIVITY_INSTANCE_PARTICIPANTS_UPDATE",
+      ({ participants: list }) => {
+        list.forEach(p => participants.set(p.user_id, p));
+        window.renderLeaderboard?.();
+      });
+
+    // who just posted a score?
+    sdk.subscribe("ACTIVITY_INSTANCE_STATE_UPDATE",
+      ({ user_id, state }) => {
+        if (typeof state.timeMs === "number") {
+          scores.set(user_id, state.timeMs);
+          window.renderLeaderboard?.();
+        }
+      });
   });
+  return readyPromise;
+}
 
-/* live scores -------------------------------------------------------------- */
-export const scores = new Map();             // user_id → ms
-sdk.subscribe("ACTIVITY_INSTANCE_STATE_UPDATE",
-  ({ user_id, state }) => {
-    if (typeof state.timeMs === "number") {
-      scores.set(user_id, state.timeMs);
-      window.renderLeaderboard?.();          // 🚀 keep board in sync
-    }
-  });
-
-/* shout your time ---------------------------------------------------------- */
+// shout your solve-time in ms
 export async function postTime(ms) {
-  // Discord will echo the update right back to us, so no manual local-echo.
-  await sdk.commands.setActivityInstanceState({ timeMs: ms });
+  await initDiscord();                              // makes sure SDK is ready
+  return sdk.commands.setActivityInstanceState({ timeMs: ms });
 }
