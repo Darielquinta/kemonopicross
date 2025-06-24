@@ -8,12 +8,12 @@ import logo   from "./TitleLogo_en.png";
 import nanoda from "./nanoda.png";
 import "./style.css";
 import ALL_PATTERNS from "./newpatterns.json";
-import { initializeApp } from "firebase/app";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
-  getFirestore, doc, setDoc, getDoc, collection,
+  getFirestore, doc, setDoc, collection,
   query, where, orderBy, limit, getDocs,
   serverTimestamp
-} from "firebase/firestore";
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 import { DiscordSDK } from "@discord/embedded-app-sdk";
 
