@@ -38,14 +38,14 @@ export function initDiscord() {
 
 /* broadcast + instant local echo ----------------------------------------- */
 export async function postTime(ms) {
-  await initDiscord();
+  await initDiscord();                 // make sure the SDK handshake is done
 
-  /* local echo – works now that meId is set */
-  if (meId) {
-    scores.set(meId, ms);
-    window.renderLeaderboard?.();
-  }
+  // 👉 ALWAYS echo immediately, even if we don't have our real user ID yet
+  const id = meId ?? "local";
+  scores.set(id, ms);
+  window.renderLeaderboard?.();
 
-  /* tell everyone else */
-  return sdk.commands.setActivityInstanceState({ timeMs: ms });
+  // fire-and-forget to Discord
+  sdk.commands.setActivityInstanceState({ timeMs: ms });
 }
+

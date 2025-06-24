@@ -263,7 +263,7 @@ renderLeaderboard();
     }
   };
 
-  can.addEventListener("mousemove", (e) => {
+  can.addEventListener("mousemove", async (e) => {
     updateHover(e);
     if (dragging && !solved && hoverX >= 0 && hoverY >= 0) {
       flip(hoverX, hoverY, btn);
@@ -271,8 +271,7 @@ renderLeaderboard();
 
         solved = true;
         const ms = stopTimer();
-        postTime(ms);           // don’t bother awaiting
-        renderLeaderboard();    // instant update for yourself
+        await postTime(ms); 
 
         titleEl.style.display = "block";
         fadeStart = performance.now();
@@ -284,7 +283,7 @@ renderLeaderboard();
     tick();
   });
 
-  can.addEventListener("mousedown", (e) => {
+  can.addEventListener("mousedown", async (e) => {
     if (solved) return;
     rect = can.getBoundingClientRect();
     updateHover(e);
@@ -298,8 +297,7 @@ renderLeaderboard();
     if (solvedYet()) {
       solved = true;
       const ms = stopTimer();
-      postTime(ms);           // don’t bother awaiting
-      renderLeaderboard();    // instant update for yourself
+      await postTime(ms); 
 
       fadeStart = performance.now();
       can.style.pointerEvents = "none";
