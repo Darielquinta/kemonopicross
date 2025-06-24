@@ -30,10 +30,12 @@ async function initDiscord() {
   await discordSdk.ready();
 
   // ① ask for a *token* (implicit grant)
-  const { access_token } = await discordSdk.commands.authorize({
+  const { code } = await discordSdk.commands.authorize({
     client_id: CLIENT_ID,
-    scopes: ['identify'],          // add more scopes if you need them
+    scopes: ['identify'],   // we’ll add more in a sec
   });
+  console.log('OAuth code from Discord:', code);   // ← should be a long string
+
 
   // ② register that token with the SDK
   await discordSdk.commands.authenticate({ access_token });
