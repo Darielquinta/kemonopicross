@@ -28,16 +28,17 @@ let me, guildId, channelId, ACCESS_TOKEN;
 async function initDiscord() {
   const discordSdk = new DiscordSDK(CLIENT_ID);
   await discordSdk.ready();
-
   const { code } = await discordSdk.commands.authorize({
-    client_id: CLIENT_ID,
-    scopes: ['identify']
+  client_id: CLIENT_ID,
+  scopes: ['identify'],          // add more scopes later if you need them
   });
 
-  const authResult = await discordSdk.commands.authenticate({ code });
-  if (!authResult || !authResult.access_token) throw new Error("Auth failed");
-
-  ACCESS_TOKEN = authResult.access_token;
+  // ② trade code for token (MUST pass client_id too!)
+  const { access_token } = await discordSdk.commands.authenticate({
+    client_id: CLIENT_ID,
+    code
+  });
+  ACCESS_TOKEN = access_token;
 
   const userInfo = await discordSdk.commands.getUser();
   const context = await discordSdk.commands.getChannel();
