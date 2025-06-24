@@ -28,25 +28,26 @@ let me, guildId, channelId, ACCESS_TOKEN;
 async function initDiscord() {
   const discordSdk = new DiscordSDK(CLIENT_ID);
   await discordSdk.ready();
-  const { code } = await discordSdk.commands.authorize({
-  client_id: CLIENT_ID,
-  scopes: ['identify'],          // add more scopes later if you need them
-  });
 
-  // ② trade code for token (MUST pass client_id too!)
-  const { access_token } = await discordSdk.commands.authenticate({
+  // ① ask for a *token* (implicit grant)
+  const { access_token } = await discordSdk.commands.authorize({
     client_id: CLIENT_ID,
-    code
+    scopes: ['identify'],          // add more scopes if you need them
+    response_type: 'token'
   });
-  ACCESS_TOKEN = access_token;
 
-  const userInfo = await discordSdk.commands.getUser();
-  const context = await discordSdk.commands.getChannel();
+  // ② register that token with the SDK
+  await discordSdk.commands.authenticate({ access_token });
+  ACCESS_TOKEN = access_token;     // (keep if you ever call your own backend)
 
-  me = userInfo;
-  guildId = context.guild_id;
-  channelId = context.channel_id;
+  // ③ now the usual user / context calls succeed
+  const { user }    = await discordSdk.commands.getUser();
+  const { guild_id, channel_id } = await discordSdk.commands.getChannel();
+  me        = user;
+  guildId   = guild_id;
+  channelId = channel_id;
 }
+
 
 // ⛽️ Your Firebase config (from project settings)
 const firebaseConfig = {
