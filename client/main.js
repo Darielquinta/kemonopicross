@@ -23,7 +23,7 @@ if (!CLIENT_ID) throw new Error("Missing Discord client ID in .env file");
 // Discord SDK setup
 // -----------------
 
-let me, guildId, channelId;
+let me, guildId, channelId, ACCESS_TOKEN;
 
 async function initDiscord() {
   const discordSdk = new DiscordSDK(CLIENT_ID);
@@ -36,6 +36,8 @@ async function initDiscord() {
 
   const authResult = await discordSdk.commands.authenticate({ code });
   if (!authResult || !authResult.access_token) throw new Error("Auth failed");
+
+  ACCESS_TOKEN = authResult.access_token;
 
   const userInfo = await discordSdk.commands.getUser();
   const context = await discordSdk.commands.getChannel();
@@ -54,7 +56,7 @@ const firebaseConfig = {
 
   projectId: "kemono-picross",
 
-  storageBucket: "kemono-picross.firebasestorage.app",
+  storageBucket: "kemono-picross.appspot.com",
 
   messagingSenderId: "733990606575",
 
@@ -178,23 +180,6 @@ async function view() {
   const scoreEl = document.createElement("div");
   scoreEl.style.cssText = "font:600 14px monospace;color:#fff;background:rgba(0,0,0,.65);padding:2px 8px;border-radius:4px;text-shadow:0 0 6px #000;white-space:pre;";
   hud.appendChild(scoreEl);
-
-  async function submitScore() {
-    if (!ACCESS_TOKEN) return;
-    try {
-      const res = await fetch("/api/time", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ access_token: ACCESS_TOKEN, puzzle_id: PUZZLE_ID, time: elapsed }),
-      });
-      const data = await res.json();
-      scoreEl.textContent = data.leaderboard
-        .map((e, i) => `${i + 1}. ${e.username} - ${e.time}s`)
-        .join("\n");
-    } catch (e) {
-      console.error(e);
-    }
-  }
 
   /* canvas */
   const can = document.createElement("canvas");
@@ -361,7 +346,6 @@ async function view() {
         can.style.pointerEvents = "none";
         titleEl.style.display = "block";   // reveal name
         showBanner();
-        submitScore();
       }
     }
     tick();
@@ -386,8 +370,6 @@ async function view() {
       const totalSec = Math.floor((Date.now() - tStart) / 1000);
       submitTime(totalSec).catch(console.error);
       titleEl.style.display = "block";
-      showBanner();
-      submitScore();
     }
     tick();
   });
@@ -405,7 +387,20 @@ async function view() {
 }
 
   const board = await loadBoard();
-  hud.appendChild(renderBoard(board));
+hud.appendChild(renderBoard(board));
+
+if (!board.some(e => e.userId === me.id)) {
+  const ref = doc(db, "scores", `${guildId}_${PUZZLE_ID}_${me.id}`);
+  const snap = await getDoc(ref);
+  if (snap.exists()) {
+    const e = snap.data();
+    const soloScore = document.createElement("div");
+    soloScore.textContent = `Your time: ${Math.floor(e.seconds/60)}:${String(e.seconds%60).padStart(2, '0')}`;
+    soloScore.style.cssText = "margin-top:6px;font:14px monospace;color:white;background:#333;padding:4px 10px;border-radius:6px;";
+    hud.appendChild(soloScore);
+  }
+}
+
 
   function renderBoard(arr) {
     const box = document.createElement("div");
