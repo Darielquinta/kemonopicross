@@ -14,6 +14,7 @@ export function createTimer(update) {
   const stopTimer = () => {
     clearInterval(handle);
     active = false;
+    return Date.now() - start;
   };
   return { startTimer, stopTimer };
 }
