@@ -61,27 +61,28 @@ export async function createBoard(puzzle) {
     "font:600 18px monospace;color:#fff;background:rgba(0,0,0,.65);padding:2px 8px;border-radius:4px;text-shadow:0 0 6px #000;";
   hud.appendChild(timeEl);
 
-    /* ---------- LEADERBOARD HUD ---------- */
-  const lb = document.createElement("div");
-  lb.style.cssText =
-    "min-width:140px;font:14px monospace;color:#fff;background:rgba(0,0,0,.65);" +
-    "padding:2px 8px;border-radius:4px;text-shadow:0 0 6px #000;";
-  hud.appendChild(lb);
 
-  function renderLeaderboard() {
-    const rows = [...scores.entries()]
-      .sort((a, b) => a[1] - b[1])                         // lowest time first
-      .map(([id, ms], i) =>
-        `${String(i + 1).padStart(2, "0")}. ${
-          participants.get(id)?.username ?? id.slice(0, 4)
-        }  ${(ms / 1000).toFixed(1)}s`
-      )
-      .join("<br>");
-    lb.innerHTML = rows || "⏳ no times yet";
-  }
-  // let discord-lite call this whenever it hears a new score
-  window.renderLeaderboard = renderLeaderboard;
-  renderLeaderboard();
+
+    /* ---------- LEADERBOARD HUD ---------- */
+const lb = document.createElement("div");
+lb.style.cssText =
+  "min-width:140px;font:14px monospace;color:#fff;background:rgba(0,0,0,.65);" +
+  "padding:2px 8px;border-radius:4px;text-shadow:0 0 6px #000;";
+hud.appendChild(lb);
+
+function renderLeaderboard() {
+  const rows = [...scores.entries()]
+    .sort((a, b) => a[1] - b[1])           // lower time first
+    .map(([id, ms], i) =>
+      `${String(i + 1).padStart(2, "0")}. ${
+        participants.get(id)?.username ?? id.slice(0, 4)
+      }  ${(ms / 1000).toFixed(1)}s`)
+    .join("<br>");
+  lb.innerHTML = rows || "⏳ no times yet";
+}
+window.renderLeaderboard = renderLeaderboard;   // let discord-lite ping it
+renderLeaderboard();
+
 
   const { startTimer, stopTimer } = createTimer((ms) => {
     const sec = Math.floor(ms / 1000);
@@ -267,9 +268,12 @@ export async function createBoard(puzzle) {
     if (dragging && !solved && hoverX >= 0 && hoverY >= 0) {
       flip(hoverX, hoverY, btn);
       if (solvedYet()) {
+
         solved = true;
         const ms = stopTimer();
-        postTime(ms);                  // broadcast to the lobby!
+        postTime(ms);           // don’t bother awaiting
+        renderLeaderboard();    // instant update for yourself
+
         titleEl.style.display = "block";
         fadeStart = performance.now();
         can.style.pointerEvents = "none";
@@ -294,8 +298,9 @@ export async function createBoard(puzzle) {
     if (solvedYet()) {
       solved = true;
       const ms = stopTimer();
-      postTime(ms);
-+      renderLeaderboard();
+      postTime(ms);           // don’t bother awaiting
+      renderLeaderboard();    // instant update for yourself
+
       fadeStart = performance.now();
       can.style.pointerEvents = "none";
       titleEl.style.display = "block";
