@@ -2,38 +2,30 @@ import { DiscordSDK } from "@discord/embedded-app-sdk";
 
 export const sdk = new DiscordSDK(import.meta.env.VITE_DISCORD_CLIENT_ID);
 
-export const participants = new Map();
-export const scores       = new Map();
+export const participants = new Map();   // user_id → profile
+export const scores       = new Map();   // user_id → ms
 
 let meId = null;
 let pendingScore = null;
 
-/* ───────── init (idempotent) ───────── */
 let ready;
 export function initDiscord() {
   if (ready) return ready;
   ready = (async () => {
-    await sdk.ready();                  // iframe⇄Discord handshake
+    await sdk.ready();                // handshake
 
-    /* 1⃣  Get a code (popup) */
-    const { code } = await sdk.commands.authorize({
+    /* ① POPUP: implicit grant (no secret needed) */
+    const { access_token } = await sdk.commands.authorize({
       client_id:     import.meta.env.VITE_DISCORD_CLIENT_ID,
-      response_type: "code",
+      response_type: "token",          // <-- this is the magic
       prompt:        "auto",
       scope:         ["identify"]
     });
 
-    /* 2⃣  Swap code → token via our Worker */
-    const { access_token } = await fetch("/api/token", {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ code })
-    }).then(r => r.json());
-
-    /* 3⃣  Tell Discord SDK to bind that token */
+    /* ② Bind the token to the SDK */
     await sdk.commands.authenticate({ access_token });
 
-    /* 4⃣  Now participants will flag is_current & include names */
+    /* ③ Listeners */
     sdk.subscribe("ACTIVITY_INSTANCE_PARTICIPANTS_UPDATE",
       ({ participants: list }) => {
         list.forEach(p => {
@@ -61,14 +53,13 @@ export function initDiscord() {
   return ready;
 }
 
-/* ───────── post your time ───────── */
 export async function postTime(ms) {
   await initDiscord();
 
   if (meId) {
-    scores.set(meId, ms);
+    scores.set(meId, ms);            // instant local echo
   } else {
-    pendingScore = ms;
+    pendingScore = ms;               // stash until participant packet arrives
     scores.set("local", ms);
   }
   window.renderLeaderboard?.();
