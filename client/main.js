@@ -155,15 +155,11 @@ async function view() {
   swirl.src = nanoda;
   const img = new Image();
   img.src = new URL(`./puzzles/${PUZZLE_ID}.png`, import.meta.url).href;
+  await img.decode();
 
-  /* answer sprite (1× per cell) */
   const sprite = document.createElement("canvas");
   sprite.width = COLS; sprite.height = ROWS;
   sprite.getContext("2d").drawImage(img, 0, 0, COLS, ROWS);
-  const swirlPat = document
-    .createElement("canvas")
-    .getContext("2d")
-    .createPattern(swirl, "repeat")!;
 
   /* DOM skeleton */
   const app = document.querySelector("#app");
