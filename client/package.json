@@ -16,6 +16,7 @@
     "vite": "^6.3.5"
   },
   "dependencies": {
-    "@discord/embedded-app-sdk": "^2.0.0"
+    "@discord/embedded-app-sdk": "^2.0.0",
+    "firebase": "^11.9.1"
   }
 }
