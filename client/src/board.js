@@ -3,6 +3,7 @@ import nanoda from "../nanoda.png";
 import { COLOR } from "./constants.js";
 import { computeLayout } from "./layout.js";
 import { createTimer } from "./timer.js";
+import { postTime, scores, participants } from "./discord-lite.js"; 
 
 export async function createBoard(puzzle) {
   const {
@@ -57,6 +58,28 @@ export async function createBoard(puzzle) {
   timeEl.style.cssText =
     "font:600 18px monospace;color:#fff;background:rgba(0,0,0,.65);padding:2px 8px;border-radius:4px;text-shadow:0 0 6px #000;";
   hud.appendChild(timeEl);
+
+    /* ---------- LEADERBOARD HUD ---------- */
+  const lb = document.createElement("div");
+  lb.style.cssText =
+    "min-width:140px;font:14px monospace;color:#fff;background:rgba(0,0,0,.65);" +
+    "padding:2px 8px;border-radius:4px;text-shadow:0 0 6px #000;";
+  hud.appendChild(lb);
+
+  function renderLeaderboard() {
+    const rows = [...scores.entries()]
+      .sort((a, b) => a[1] - b[1])                         // lowest time first
+      .map(([id, ms], i) =>
+        `${String(i + 1).padStart(2, "0")}. ${
+          participants.get(id)?.username ?? id.slice(0, 4)
+        }  ${(ms / 1000).toFixed(1)}s`
+      )
+      .join("<br>");
+    lb.innerHTML = rows || "⏳ no times yet";
+  }
+  // let discord-lite call this whenever it hears a new score
+  window.renderLeaderboard = renderLeaderboard;
+  renderLeaderboard();
 
   const { startTimer, stopTimer } = createTimer((ms) => {
     const sec = Math.floor(ms / 1000);
@@ -243,7 +266,9 @@ export async function createBoard(puzzle) {
       flip(hoverX, hoverY, btn);
       if (solvedYet()) {
         solved = true;
-        stopTimer();
+        const ms = stopTimer();
+        postTime(ms);                  // broadcast to the lobby!
+        titleEl.style.display = "block";
         fadeStart = performance.now();
         can.style.pointerEvents = "none";
         titleEl.style.display = "block";
@@ -266,7 +291,9 @@ export async function createBoard(puzzle) {
 
     if (solvedYet()) {
       solved = true;
-      stopTimer();
+      const ms = stopTimer();
+      postTime(ms);
++      renderLeaderboard();
       fadeStart = performance.now();
       can.style.pointerEvents = "none";
       titleEl.style.display = "block";
