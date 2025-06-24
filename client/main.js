@@ -150,7 +150,9 @@ const TOP  = MAX_COL * CLUE + 12;   // board origin Y
 
 /* ───────── MAIN ───────── */
 async function view() {
-  const swirl = new Image(); swirl.src = nanoda;
+  const swirl = new Image(); 
+  swirl.crossOrigin = "anonymous";
+  swirl.src = nanoda;
   const img = new Image();
   img.src = new URL(`./puzzles/${PUZZLE_ID}.png`, import.meta.url).href;
 
@@ -161,7 +163,7 @@ async function view() {
   const swirlPat = document
     .createElement("canvas")
     .getContext("2d")
-    .createPattern(swirl, "repeat");
+    .createPattern(swirl, "repeat")!;
 
   /* DOM skeleton */
   const app = document.querySelector("#app");
