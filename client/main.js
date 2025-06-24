@@ -150,21 +150,26 @@ const TOP  = MAX_COL * CLUE + 12;   // board origin Y
 
 /* ───────── MAIN ───────── */
 async function view() {
-  const swirl = new Image(); 
-  swirl.crossOrigin = "anonymous";
+  /* ---------- load the two images ---------- */
+  const swirl = new Image();
+  swirl.crossOrigin = 'anonymous';      // CORS-safe so createPattern works
   swirl.src = nanoda;
+
   const img = new Image();
   img.src = new URL(`./puzzles/${PUZZLE_ID}.png`, import.meta.url).href;
-  
 
-  /* answer sprite (1× per cell) */
-  const sprite = document.createElement("canvas");
-  sprite.width = COLS; sprite.height = ROWS;
-  sprite.getContext("2d").drawImage(img, 0, 0, COLS, ROWS);
-  const swirlPat = document
-    .createElement("canvas")
-    .getContext("2d")
-    .createPattern(swirl, "repeat");
+  // wait until both bitmaps are fully decoded
+  await Promise.all([swirl.decode(), img.decode()]);
+
+  /* ---------- build the sprite for the solution ---------- */
+  const sprite = document.createElement('canvas');
+  sprite.width  = COLS;
+  sprite.height = ROWS;
+  sprite.getContext('2d').drawImage(img, 0, 0, COLS, ROWS);
+
+  /* ---------- make the repeating forest pattern ---------- */
+  const swirlPatCtx = document.createElement('canvas').getContext('2d');
+  const swirlPat    = swirlPatCtx.createPattern(swirl, 'repeat');
 
   /* DOM skeleton */
   const app = document.querySelector("#app");
@@ -260,14 +265,24 @@ async function view() {
 
   /* DRAWER */
   const draw = alpha => {
-    ctx.clearRect(0,0,can.width,can.height);
+    ctx.clearRect(0, 0, can.width, can.height);
 
-    // sprite fade‑in
-    ctx.save(); ctx.imageSmoothingEnabled=false; ctx.globalAlpha=1-alpha;
-    ctx.drawImage(sprite, LEFT, TOP, COLS*CELL, ROWS*CELL); ctx.restore();
+    // sprite fade-in
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalAlpha = 1 - alpha;
+    ctx.drawImage(sprite, LEFT, TOP, COLS * CELL, ROWS * CELL);
+    ctx.restore();
 
-    ctx.save(); ctx.globalAlpha=alpha;
-    ctx.fillStyle=swirlPat; ctx.globalAlpha*=.25; ctx.fillRect(0,0,can.width,can.height); ctx.globalAlpha=alpha;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    if (swirlPat) {                      // <- guard against null
+      ctx.fillStyle = swirlPat;
+      ctx.globalAlpha *= 0.25;
+      ctx.fillRect(0, 0, can.width, can.height);
+    }
+    ctx.globalAlpha = alpha;
 
     ctx.fillStyle=COLOR.clueBg;
     ctx.fillRect(0,0,LEFT-2,TOP-2);
