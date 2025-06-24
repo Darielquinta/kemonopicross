@@ -142,8 +142,7 @@ const TOP  = MAX_COL * CLUE + 12;   // board origin Y
 async function view() {
   const swirl = new Image(); swirl.src = nanoda;
   const img = new Image();
-  img.src = `/${PUZZLE_ID}.png`;            // simplest
-  // or: `${import.meta.env.BASE_URL}../${PUZZLE_ID}.png`
+  img.src = `${import.meta.env.BASE_URL}${PUZZLE_ID}.png`;
   await Promise.all([img.decode(), swirl.decode()]);
 
   /* answer sprite (1× per cell) */
