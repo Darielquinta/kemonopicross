@@ -33,7 +33,6 @@ async function initDiscord() {
   const { access_token } = await discordSdk.commands.authorize({
     client_id: CLIENT_ID,
     scopes: ['identify'],          // add more scopes if you need them
-    response_type: 'token'
   });
 
   // ② register that token with the SDK
