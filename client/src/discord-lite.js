@@ -6,9 +6,11 @@ export const participants = new Map();      // user_id → profile
 export const scores       = new Map();      // user_id → ms
 
 export function getDisplayName(id) {
+  if (id === "local") return "You";
   const p = participants.get(id);
   return p?.global_name || p?.username || id.slice(0, 4);
 }
+
 
 let meId          = null;   // real id once we know it
 let pendingScore  = null;   // score saved before we know my id
@@ -27,6 +29,21 @@ export function initDiscord() {
       prompt: "auto",
       scope: ["identify"]           // no backend token exchange needed for names
     }).catch(() => { /* user hit “Cancel” – fine, we just won’t get names */ });
+    try {
+        const { user } = await sdk.commands.getCurrentUser();   // or usersGetCurrent() on newer SDKs
+        meId = user.id;
+        participants.set(user.id, user);
+
+        // Swap out the placeholder score if we posted before identity was known
+        if (pendingScore !== null) {
+            scores.delete("local");
+            scores.set(user.id, pendingScore);
+            pendingScore = null;
+        }
+        window.renderLeaderboard?.();
+    } catch (_) {
+    // Fine to ignore—worst case we stay on the placeholder
+    }
 
     /* 2. Start listening for lobby data */
     sdk.subscribe("ACTIVITY_INSTANCE_PARTICIPANTS_UPDATE",
