@@ -11,7 +11,6 @@ export function getDisplayName(id) {
   return p?.global_name || p?.username || id.slice(0, 4);
 }
 
-
 let meId          = null;   // real id once we know it
 let pendingScore  = null;   // score saved before we know my id
 
@@ -22,55 +21,85 @@ export function initDiscord() {
   ready = (async () => {
     await sdk.ready();                               // iframe ⇄ Discord handshake
 
-    /* 1. Ask the user for basic identity permission (popup) */
-    await sdk.commands.authorize({
-      client_id: import.meta.env.VITE_DISCORD_CLIENT_ID,
-      response_type: "code",
-      prompt: "auto",
-      scope: ["identify"]           // no backend token exchange needed for names
-    }).catch(() => { /* user hit “Cancel” – fine, we just won’t get names */ });
-    try {
-        const { user } = await sdk.commands.getCurrentUser();   // or usersGetCurrent() on newer SDKs
-        meId = user.id;
-        participants.set(user.id, user);
+    /* 1. Subscribe to events BEFORE authorization to catch early data */
+    sdk.subscribe("ACTIVITY_INSTANCE_PARTICIPANTS_UPDATE", ({ participants: list }) => {
+      console.log("Participants update:", list);
+      list.forEach(p => {
+        participants.set(p.user_id, p);
+        if (p.is_current) {
+          meId = p.user_id;
+          console.log("Found current user:", meId);
 
-        // Swap out the placeholder score if we posted before identity was known
-        if (pendingScore !== null) {
+          /* replace placeholder if we solved before auth completed */
+          if (pendingScore !== null) {
             scores.delete("local");
-            scores.set(user.id, pendingScore);
+            scores.set(meId, pendingScore);
             pendingScore = null;
+          }
         }
+      });
+      window.renderLeaderboard?.();
+    });
+
+    sdk.subscribe("ACTIVITY_INSTANCE_STATE_UPDATE", ({ user_id, state }) => {
+      console.log("State update:", user_id, state);
+      if (typeof state.timeMs === "number") {
+        scores.set(user_id, state.timeMs);
         window.renderLeaderboard?.();
-    } catch (_) {
-    // Fine to ignore—worst case we stay on the placeholder
+      }
+    });
+
+    /* 2. Ask the user for basic identity permission (popup) */
+    try {
+      await sdk.commands.authorize({
+        client_id: import.meta.env.VITE_DISCORD_CLIENT_ID,
+        response_type: "code",
+        prompt: "auto",
+        scope: ["identify"]           // no backend token exchange needed for names
+      });
+      
+      const { user } = await sdk.commands.getCurrentUser();
+      meId = user.id;
+      participants.set(user.id, user);
+      console.log("Authorized user:", user);
+
+      // Swap out the placeholder score if we posted before identity was known
+      if (pendingScore !== null) {
+        scores.delete("local");
+        scores.set(user.id, pendingScore);
+        pendingScore = null;
+      }
+    } catch (error) {
+      console.log("Authorization failed or cancelled:", error);
+      // Fine to ignore—worst case we stay on the placeholder
     }
 
-    /* 2. Start listening for lobby data */
-    sdk.subscribe("ACTIVITY_INSTANCE_PARTICIPANTS_UPDATE",
-      ({ participants: list }) => {
-        list.forEach(p => {
+    /* 3. Get current activity instance data */
+    try {
+      // Get current participants
+      const instanceData = await sdk.commands.getInstanceConnectedParticipants();
+      console.log("Initial participants:", instanceData);
+      if (instanceData.participants) {
+        instanceData.participants.forEach(p => {
           participants.set(p.user_id, p);
           if (p.is_current) {
             meId = p.user_id;
-
-            /* replace placeholder if we solved before auth completed */
-            if (pendingScore !== null) {
-              scores.delete("local");
-              scores.set(meId, pendingScore);
-              pendingScore = null;
-            }
           }
         });
-        window.renderLeaderboard?.();
-      });
+      }
+    } catch (error) {
+      console.log("Failed to get participants:", error);
+    }
 
-    sdk.subscribe("ACTIVITY_INSTANCE_STATE_UPDATE",
-      ({ user_id, state }) => {
-        if (typeof state.timeMs === "number") {
-          scores.set(user_id, state.timeMs);
-          window.renderLeaderboard?.();
-        }
-      });
+    /* 4. Request current activity state from all participants */
+    try {
+      // This will trigger ACTIVITY_INSTANCE_STATE_UPDATE events for existing states
+      await sdk.commands.getActivityInstanceState();
+    } catch (error) {
+      console.log("Failed to get activity state:", error);
+    }
+
+    window.renderLeaderboard?.();
   })();
   return ready;
 }
@@ -78,6 +107,8 @@ export function initDiscord() {
 /* ───────── post your solve-time ───────── */
 export async function postTime(ms) {
   await initDiscord();                  // make sure listeners are up
+
+  console.log("Posting time:", ms, "for user:", meId);
 
   /* instant local echo */
   if (meId) {
@@ -89,5 +120,10 @@ export async function postTime(ms) {
   window.renderLeaderboard?.();
 
   /* fire-and-forget to the room */
-  sdk.commands.setActivityInstanceState({ timeMs: ms });
+  try {
+    await sdk.commands.setActivityInstanceState({ timeMs: ms });
+    console.log("Successfully posted time to Discord");
+  } catch (error) {
+    console.error("Failed to post time to Discord:", error);
+  }
 }
