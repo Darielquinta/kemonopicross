@@ -62,21 +62,97 @@ export async function createBoard(puzzle) {
 
 
 
-    /* ---------- LEADERBOARD HUD ---------- */
+// Replace the leaderboard section in your board.js with this:
+
+/* ---------- LEADERBOARD HUD ---------- */
 const lb = document.createElement("div");
 lb.style.cssText =
-  "min-width:140px;font:14px monospace;color:#fff;background:rgba(0,0,0,.65);" +
-  "padding:2px 8px;border-radius:4px;text-shadow:0 0 6px #000;";
+  "min-width:200px;font:13px monospace;color:#fff;background:rgba(0,0,0,.8);" +
+  "padding:10px 12px;border-radius:8px;text-shadow:0 0 6px #000;max-height:250px;overflow-y:auto;" +
+  "border:1px solid rgba(255,255,255,0.2);";
 hud.appendChild(lb);
 
 function renderLeaderboard() {
-  const rows = [...scores.entries()]
-    .sort((a, b) => a[1] - b[1])           // lower time first
-    .map(([id, ms], i) =>
-    `${String(i + 1).padStart(2, "0")}. ${getDisplayName(id)} ${(ms / 1000).toFixed(1)}s`).join("<br>");
-  lb.innerHTML = rows || "⏳ no times yet";
+  const today = new Date().toISOString().split('T')[0];
+  const puzzleId = Math.floor((Date.now() - new Date(2025, 0, 1)) / (86_400_000));
+  
+  const entries = Array.from(scores.entries())
+    .map(([userId, data]) => ({
+      userId,
+      displayName: data.displayName || data.username || getDisplayName(userId),
+      time: data.time,
+      completedAt: data.completedAt
+    }))
+    .sort((a, b) => a.time - b.time);
+
+  if (entries.length === 0) {
+    lb.innerHTML = `
+      <div style="text-align:center;color:#ccc;">
+        <div style="font-size:16px;margin-bottom:4px;">🧩</div>
+        <div style="font-weight:bold;margin-bottom:2px;">Daily Picross #${puzzleId}</div>
+        <div style="font-size:11px;color:#999;margin-bottom:8px;">${today}</div>
+        <div style="color:#666;">No completions yet!</div>
+        <div style="font-size:11px;color:#888;margin-top:4px;">Be the first to solve it! 🏆</div>
+      </div>
+    `;
+    return;
+  }
+
+  const totalPlayers = entries.length;
+  const myEntry = entries.find(entry => entry.userId === meId || entry.userId === "local");
+  const myRank = myEntry ? entries.indexOf(myEntry) + 1 : null;
+
+  const rows = entries
+    .slice(0, 10) // Show top 10
+    .map((entry, i) => {
+      const rank = String(i + 1).padStart(2, "0");
+      const time = (entry.time / 1000).toFixed(1);
+      const isMe = entry.userId === meId || entry.userId === "local";
+      
+      // Add medals for top 3
+      let medal = '';
+      if (i === 0) medal = '🥇 ';
+      else if (i === 1) medal = '🥈 ';
+      else if (i === 2) medal = '🥉 ';
+      
+      const style = isMe ? 'color:#00d9aa;font-weight:bold;background:rgba(0,217,170,0.1);padding:1px 4px;border-radius:3px;' : '';
+      const nameStyle = isMe ? 'color:#00d9aa;' : 'color:#fff;';
+      const timeStyle = isMe ? 'color:#00d9aa;' : 'color:#ccc;';
+      
+      return `<div style="${style}margin:1px 0;"><span style="${nameStyle}">${medal}${rank}. ${entry.displayName}</span> <span style="${timeStyle}">${time}s</span></div>`;
+    })
+    .join("");
+
+  // Show user's rank if not in top 10
+  let myRankDisplay = '';
+  if (myRank && myRank > 10) {
+    const myTime = (myEntry.time / 1000).toFixed(1);
+    myRankDisplay = `
+      <div style="border-top:1px solid #444;margin:6px 0 2px;padding-top:4px;color:#00d9aa;font-weight:bold;">
+        ${myRank}. You ${myTime}s
+      </div>
+    `;
+  }
+
+  const showingText = totalPlayers > 10 ? `<div style="font-size:10px;color:#666;margin-top:4px;">Showing top 10 of ${totalPlayers}</div>` : '';
+
+  lb.innerHTML = `
+    <div style="text-align:center;margin-bottom:8px;border-bottom:1px solid #444;padding-bottom:6px;">
+      <div style="font-size:16px;margin-bottom:2px;">🏆</div>
+      <div style="font-weight:bold;color:#fff;">Daily Picross #${puzzleId}</div>
+      <div style="font-size:11px;color:#999;">${today}</div>
+      ${totalPlayers > 0 ? `<div style="font-size:11px;color:#ccc;margin-top:2px;">${totalPlayers} player${totalPlayers !== 1 ? 's' : ''}</div>` : ''}
+    </div>
+    <div style="text-align:left;">
+      ${rows}
+      ${myRankDisplay}
+      ${showingText}
+    </div>
+  `;
 }
-window.renderLeaderboard = renderLeaderboard;   // let discord-lite ping it
+
+// Make it globally accessible and render initially
+window.renderLeaderboard = renderLeaderboard;
 renderLeaderboard();
 
 
