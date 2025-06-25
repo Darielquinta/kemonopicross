@@ -37,7 +37,7 @@ export function getDisplayName(id) {
   return p?.global_name || p?.username || id.slice(0, 4);
 }
 
-let meId = null;
+export let meId = null;
 let guildId = null;
 let channelId = null;
 let pendingScore = null;

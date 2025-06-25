@@ -3,7 +3,8 @@ import nanoda from "../nanoda.png";
 import { COLOR } from "./constants.js";
 import { computeLayout } from "./layout.js";
 import { createTimer } from "./timer.js";
-import { initDiscord, postTime, scores, getDisplayName } from "./discord-lite.js";
+import { initDiscord, postTime, scores, getDisplayName, meId } from "./discord-lite.js";
+
 
 export async function createBoard(puzzle) {
   await initDiscord();
