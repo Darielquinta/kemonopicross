@@ -3,8 +3,7 @@ import nanoda from "../nanoda.png";
 import { COLOR } from "./constants.js";
 import { computeLayout } from "./layout.js";
 import { createTimer } from "./timer.js";
-import { initDiscord, postTime, scores, participants } from "./discord-lite.js";
-
+import { initDiscord, postTime, scores, getDisplayName } from "./discord-lite.js";
 
 export async function createBoard(puzzle) {
   await initDiscord();
@@ -74,10 +73,7 @@ function renderLeaderboard() {
   const rows = [...scores.entries()]
     .sort((a, b) => a[1] - b[1])           // lower time first
     .map(([id, ms], i) =>
-      `${String(i + 1).padStart(2, "0")}. ${
-        participants.get(id)?.username ?? id.slice(0, 4)
-      }  ${(ms / 1000).toFixed(1)}s`)
-    .join("<br>");
+    `${String(i + 1).padStart(2, "0")}. ${getDisplayName(id)} ${(ms / 1000).toFixed(1)}s`).join("<br>");
   lb.innerHTML = rows || "⏳ no times yet";
 }
 window.renderLeaderboard = renderLeaderboard;   // let discord-lite ping it

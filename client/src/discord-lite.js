@@ -5,6 +5,11 @@ export const sdk = new DiscordSDK(import.meta.env.VITE_DISCORD_CLIENT_ID);
 export const participants = new Map();      // user_id → profile
 export const scores       = new Map();      // user_id → ms
 
+export function getDisplayName(id) {
+  const p = participants.get(id);
+  return p?.global_name || p?.username || id.slice(0, 4);
+}
+
 let meId          = null;   // real id once we know it
 let pendingScore  = null;   // score saved before we know my id
 
