@@ -1,22 +1,20 @@
 import { defineConfig } from "vite";
-export default defineConfig({ 
-  base: "/picross/",
-  envDir: '../',
+
+export default defineConfig({
+  base: "/picross/",       // fine for Cloudflare Pages + Discord
+  envDir: "../",
+
   server: {
-    host: true,                 // listen on all interfaces
+    host: true,
     proxy: {
-      '/api': {
-        target: 'http://localhost:3001',
+      "/api": {
+        target: "http://localhost:3001",
         changeOrigin: true,
         secure: false,
         ws: true,
       },
     },
-    allowedHosts: [
-      'play.kemonopicross.xyz'
-    ],
-    hmr: {
-      clientPort: 443,
-    },
+    allowedHosts: ["play.kemonopicross.xyz"],
+    hmr: { clientPort: 443 },
   },
 });
